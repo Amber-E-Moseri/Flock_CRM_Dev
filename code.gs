@@ -76,6 +76,12 @@ function doGet(e) {
       return json_(api_saveCadence(personId, cadenceDays));
     }
 
+    if (action === 'setActive') {
+      const personId = e.parameter.personId || '';
+      const active   = e.parameter.active   || 'false';
+      return json_(api_setActive(personId, active));
+    }
+
     if (action === 'getSettings') {
       return json_(api_getSettings());
     }
@@ -144,7 +150,6 @@ function cacheGet_(key) {
 function cachePut_(key, data) {
   try {
     const str = JSON.stringify(data);
-    // Apps Script cache limit is 100KB per entry
     if (str.length < 90000) {
       CacheService.getScriptCache().put(key, str, CACHE_TTL);
     }
@@ -188,7 +193,6 @@ function setupSystem() {
     ['MORNING_REMINDER_HOUR','8'],
     ['DUESTATUS_REFRESH_HOUR','1'],
     ['MONDAY_FOLLOWUPS_HOUR','8'],
-    ['DUE_SOON_DAYS','2'],
     ['TIMEZONE',''],
     ['YOUR_NAME','Pastor'],
   ];
@@ -219,7 +223,6 @@ function setupSystem() {
 
 
 // ─── API: GET PEOPLE ─────────────────────────────────────────
-// FIX: cached — avoids a sheet read on every Log page load
 
 function api_getPeople() {
   const cached = cacheGet_(CACHE_KEY_PPL);
@@ -275,12 +278,11 @@ function api_getInteractions(personId) {
       nextAction: row[idx('nextaction')]          || '',
       nextDt:     row[idx('nextactiondatetime')]  ? formatDate_(row[idx('nextactiondatetime')])  : ''
     }))
-    .reverse(); // newest first
+    .reverse();
 }
 
 
 // ─── API: GET PEOPLE WITH CADENCE ────────────────────────────
-// CadenceDays is fixed at column E (index 4, 0-based)
 
 const CADENCE_COL = 4; // Column E (0-based)
 
@@ -293,16 +295,17 @@ function api_getPeopleWithCadence() {
   const idx     = h => headers.indexOf(h);
 
   return data.slice(1)
-    .filter(row => isActiveVal_(row[idx('active')]))
     .map(row => {
-      const raw = Number(row[CADENCE_COL]);          // column E raw value
+      const raw      = Number(row[CADENCE_COL]);
+      const isActive = isActiveVal_(row[idx('active')]);
       return {
         id:          row[idx('personid')],
         name:        row[idx('fullname')],
-        cadenceDays: raw > 0 ? raw : 30,             // use column E, fall back to 30
-        isDefault:   !(raw > 0),                     // true = column E is blank/0
+        cadenceDays: raw > 0 ? raw : 30,
+        isDefault:   !(raw > 0),
         fellowship:  row[idx('fellowship')] || '',
-        role:        row[idx('role')]       || ''
+        role:        row[idx('role')]       || '',
+        active:      isActive
       };
     })
     .filter(p => p.name)
@@ -311,7 +314,6 @@ function api_getPeopleWithCadence() {
 
 
 // ─── API: SAVE CADENCE ───────────────────────────────────────
-// Writes directly to column E (CadenceDays) by position
 
 function api_saveCadence(personId, cadenceDays) {
   if (!personId)   return { success: false, error: 'Missing personId.' };
@@ -320,13 +322,37 @@ function api_saveCadence(personId, cadenceDays) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEOPLE);
   if (!sheet) return { success: false, error: 'PEOPLE sheet not found.' };
 
-  const data   = sheet.getDataRange().getValues();
+  const data    = sheet.getDataRange().getValues();
   const headers = data[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
-  const pidCol = headers.indexOf('personid');
+  const pidCol  = headers.indexOf('personid');
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][pidCol]) === String(personId)) {
-      sheet.getRange(i + 1, CADENCE_COL + 1).setValue(cadenceDays); // column E = CADENCE_COL + 1
+      sheet.getRange(i + 1, CADENCE_COL + 1).setValue(cadenceDays);
+      cacheBust_();
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'Person not found.' };
+}
+
+
+// ─── API: SET ACTIVE ─────────────────────────────────────────
+
+function api_setActive(personId, active) {
+  if (!personId) return { success: false, error: 'Missing personId.' };
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEOPLE);
+  if (!sheet) return { success: false, error: 'PEOPLE sheet not found.' };
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+  const pidCol  = headers.indexOf('personid');
+  const actCol  = headers.indexOf('active');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][pidCol]) === String(personId)) {
+      sheet.getRange(i + 1, actCol + 1).setValue(active === 'true' ? true : false);
       cacheBust_();
       return { success: true };
     }
@@ -338,12 +364,12 @@ function api_saveCadence(personId, cadenceDays) {
 // ─── API: GET / SAVE APP SETTINGS ────────────────────────────
 
 const SETTINGS_META = {
-  REMINDER_EMAIL:         { label: 'Reminder Email', desc: 'Email address(es) to receive daily and weekly reminders. Separate multiple with commas.' },
+  REMINDER_EMAIL:         { label: 'Reminder Email',        desc: 'Email address(es) to receive daily and weekly reminders. Separate multiple with commas.' },
   MORNING_REMINDER_HOUR:  { label: 'Morning Reminder Hour', desc: 'Hour (0–23) to send the daily due-now email.' },
   DUESTATUS_REFRESH_HOUR: { label: 'Due Status Refresh Hour', desc: 'Hour (0–23) to automatically refresh due statuses.' },
-  MONDAY_FOLLOWUPS_HOUR:  { label: 'Weekly Summary Hour', desc: 'Hour (0–23) to send the Monday weekly summary email.' },
-  TIMEZONE:               { label: 'Timezone', desc: 'Timezone string, e.g. America/New_York. Leave blank to use spreadsheet default.' },
-  YOUR_NAME:              { label: 'Your Name', desc: 'Your first name — shown in the home screen greeting and email reminders.' }
+  MONDAY_FOLLOWUPS_HOUR:  { label: 'Weekly Summary Hour',   desc: 'Hour (0–23) to send the Monday weekly summary email.' },
+  TIMEZONE:               { label: 'Timezone',              desc: 'Timezone string, e.g. America/New_York. Leave blank to use spreadsheet default.' },
+  YOUR_NAME:              { label: 'Your Name',             desc: 'Your first name — shown in the home screen greeting and email reminders.' }
 };
 
 function api_getSettings() {
@@ -351,8 +377,8 @@ function api_getSettings() {
   if (!sheet) return [];
   const data = sheet.getDataRange().getValues();
   return data.map(function(row) {
-    const key = String(row[0]).trim();
-    const val = String(row[1] === null || row[1] === undefined ? '' : row[1]).trim();
+    const key  = String(row[0]).trim();
+    const val  = String(row[1] === null || row[1] === undefined ? '' : row[1]).trim();
     const meta = SETTINGS_META[key] || { label: key, desc: '' };
     return { key: key, val: val, label: meta.label, desc: meta.desc, hidden: !!meta.hidden };
   }).filter(function(r) { return r.key && !r.hidden; });
@@ -369,7 +395,6 @@ function api_saveSetting(key, val) {
       return { success: true };
     }
   }
-  // Key not found — append it
   sheet.appendRow([key, val]);
   return { success: true };
 }
@@ -379,61 +404,64 @@ function api_saveSetting(key, val) {
 
 function api_addPerson(payload) {
   try {
-  const name = String(payload.name || '').trim();
-  if (!name) return { success: false, error: 'Full name is required.' };
+    const name = String(payload.name || '').trim();
+    if (!name) return { success: false, error: 'Full name is required.' };
 
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_PEOPLE);
-  if (!sheet) return { success: false, error: 'PEOPLE sheet not found.' };
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_PEOPLE);
+    if (!sheet) return { success: false, error: 'PEOPLE sheet not found.' };
 
-  const data    = sheet.getDataRange().getValues();
-  const headers = data[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
-  const idx     = h => headers.indexOf(h);
+    const data    = sheet.getDataRange().getValues();
+    const headers = data[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+    const idx     = h => headers.indexOf(h);
 
-  // Duplicate name check (case-insensitive, active people only)
-  for (let i = 1; i < data.length; i++) {
-    if (isActiveVal_(data[i][idx('active')]) &&
-        String(data[i][idx('fullname')]).trim().toLowerCase() === name.toLowerCase()) {
-      return { success: false, error: 'A person with this name already exists.' };
+    for (let i = 1; i < data.length; i++) {
+      if (isActiveVal_(data[i][idx('active')]) &&
+          String(data[i][idx('fullname')]).trim().toLowerCase() === name.toLowerCase()) {
+        return { success: false, error: 'A person with this name already exists.' };
+      }
     }
-  }
 
-  const pid      = 'P' + Date.now();
-  const cadence  = parseInt(payload.cadenceDays) > 0 ? parseInt(payload.cadenceDays) : 30;
-  const now      = new Date();
-  const nextDue  = new Date(now.getTime() + cadence * 86400000);
+    const pid     = 'P' + Date.now();
+    const cadence = parseInt(payload.cadenceDays) > 0 ? parseInt(payload.cadenceDays) : 30;
+    const now     = new Date();
+    const nextDue = new Date(now.getTime() + cadence * 86400000);
 
-  // Build row matching header order: PersonID, FullName, Role, CadenceDays, Active,
-  // LastAttempt, LastSuccessfulContact, NextDueDate, DueStatus, Priority, Fellowship
-  const row = new Array(headers.length).fill('');
-  if (idx('personid')   >= 0) row[idx('personid')]   = pid;
-  if (idx('fullname')   >= 0) row[idx('fullname')]   = name;
-  if (idx('role')       >= 0) row[idx('role')]       = String(payload.role        || '').trim();
-  if (idx('fellowship') >= 0) row[idx('fellowship')] = String(payload.fellowship  || '').trim();
-  if (idx('cadencedays')>= 0) row[idx('cadencedays')]= cadence;
-  if (idx('active')     >= 0) row[idx('active')]     = true;
-  if (idx('nextduedate')>= 0) row[idx('nextduedate')]= nextDue;
-  if (idx('duestatus')  >= 0) row[idx('duestatus')]  = 'Scheduled';
-  if (idx('priority')   >= 0) row[idx('priority')]   = String(payload.priority    || '').trim();
+    const row = new Array(headers.length).fill('');
+    if (idx('personid')   >= 0) row[idx('personid')]    = pid;
+    if (idx('fullname')   >= 0) row[idx('fullname')]    = name;
+    if (idx('role')       >= 0) row[idx('role')]        = String(payload.role       || '').trim();
+    if (idx('fellowship') >= 0) row[idx('fellowship')]  = String(payload.fellowship || '').trim();
+    if (idx('cadencedays')>= 0) row[idx('cadencedays')] = cadence;
+    if (idx('active')     >= 0) row[idx('active')]      = true;
+    if (idx('nextduedate')>= 0) row[idx('nextduedate')] = nextDue;
+    if (idx('duestatus')  >= 0) row[idx('duestatus')]   = 'Scheduled';
+    if (idx('priority')   >= 0) row[idx('priority')]    = String(payload.priority   || '').trim();
 
-  sheet.appendRow(row);
-  cacheBust_();
-  return { success: true, personId: pid, name: name };
+    sheet.appendRow(row);
+    cacheBust_();
+    return { success: true, personId: pid, name: name };
   } catch(e) {
     return { success: false, error: e.message };
   }
 }
 
+
+// ─── DUPLICATE INTERACTION CHECK ─────────────────────────────
+
+// FIX: Truncate summary before building the cache key to prevent
+// "Argument too large: key" error when summaries are long.
+// CacheService keys have a 250-character limit.
 function isDuplicateInteraction_(payload) {
   const cache  = CacheService.getScriptCache();
   const keyObj = {
-    personId:          payload.personId          || '',
-    result:            payload.result            || '',
-    nextAction:        payload.nextAction        || '',
-    summary:           payload.summary           || '',
-    nextActionDateTime:payload.nextActionDateTime|| ''
+    personId:           payload.personId           || '',
+    result:             payload.result             || '',
+    nextAction:         payload.nextAction         || '',
+    summary:            (payload.summary           || '').slice(0, 80),
+    nextActionDateTime: payload.nextActionDateTime || ''
   };
-  const key = 'dup_' + Utilities.base64EncodeWebSafe(JSON.stringify(keyObj));
+  const key = 'dup_' + Utilities.base64EncodeWebSafe(JSON.stringify(keyObj)).slice(0, 200);
   if (cache.get(key)) return true;
   cache.put(key, '1', 15);
   return false;
@@ -459,10 +487,10 @@ function saveInteractionCore_(payload) {
   if (isDuplicateInteraction_(payload)) throw new Error('Duplicate blocked.');
   if (!payload.personId || !payload.result) throw new Error('Missing required fields.');
 
-  const now         = new Date();
-  const iId         = 'I' + now.getTime();
-  const outcomeType = deriveOutcomeType_(payload.result);
-  const nextActionDT= payload.nextActionDateTime ? new Date(payload.nextActionDateTime) : '';
+  const now          = new Date();
+  const iId          = 'I' + now.getTime();
+  const outcomeType  = deriveOutcomeType_(payload.result);
+  const nextActionDT = payload.nextActionDateTime ? new Date(payload.nextActionDateTime) : '';
 
   if ((payload.nextAction === 'Callback' || payload.nextAction === 'Follow-up') &&
       !(nextActionDT instanceof Date && !isNaN(nextActionDT))) {
@@ -482,9 +510,7 @@ function saveInteractionCore_(payload) {
   for (let i = 1; i < pData.length; i++) {
     if (String(pData[i][pIdx('personid')]) !== String(payload.personId)) continue;
 
-    const rowNum = i + 1;
-
-    // FIX: batch all writes to this row into one setValues call
+    const rowNum  = i + 1;
     const updates = {};
     updates[pIdx('lastattempt')] = now;
 
@@ -497,15 +523,14 @@ function saveInteractionCore_(payload) {
       updates[pIdx('duestatus')]   = STATUS_CALL_BACK;
     } else if (outcomeType === 'Successful') {
       const cadence = Number(pData[i][CADENCE_COL]) > 0
-        ? Number(pData[i][CADENCE_COL])   // use column E if set
-        : 30;                              // fall back to 30 days
+        ? Number(pData[i][CADENCE_COL])
+        : 30;
       const nextDue = resolveNextActionDateTime_(nextActionDT, cadence, now);
       updates[pIdx('nextduedate')] = nextDue;
       updates[pIdx('duestatus')]   = STATUS_COMPLETED;
       closeOpenFollowupsForPerson_(followups, payload.personId, now);
     }
 
-    // Write each changed column individually (avoids overwriting untouched columns)
     for (const [colIdx, val] of Object.entries(updates)) {
       people.getRange(rowNum, Number(colIdx) + 1).setValue(val);
     }
@@ -520,11 +545,7 @@ function saveInteractionCore_(payload) {
     ]);
   }
 
-  // FIX: removed refreshDueStatuses() here — it was running on every single
-  // call log and writing to every person row. The daily trigger handles it.
-  // Instead we just bust the cache so the next read gets fresh data.
   cacheBust_();
-
   return { success: true, interactionId: iId };
 }
 
@@ -557,8 +578,7 @@ function closeOpenFollowupsForPerson_(sheet, personId, now) {
 }
 
 
-// ─── API: GET DUE PEOPLE ────────────────────────────────────
-// FIX: cached — avoids a full sheet read on every dashboard load
+// ─── API: GET DUE PEOPLE ─────────────────────────────────────
 
 function api_getDuePeople() {
   const cached = cacheGet_(CACHE_KEY_DUE);
@@ -570,8 +590,8 @@ function api_getDuePeople() {
 }
 
 function computeDuePeople_() {
-  const ss      = SpreadsheetApp.getActiveSpreadsheet();
-  const people  = ss.getSheetByName(SHEET_PEOPLE);
+  const ss        = SpreadsheetApp.getActiveSpreadsheet();
+  const people    = ss.getSheetByName(SHEET_PEOPLE);
   const followups = ss.getSheetByName(SHEET_FOLLOWUPS);
   if (!people) return { callbacks:[], overdue:[], today:[], thisWeek:[], nextWeek:[], noDate:[] };
 
@@ -628,6 +648,7 @@ function computeDuePeople_() {
     }
 
     if (!due) {
+      // No due date set at all
       buckets.noDate.push(person);
     } else {
       const d = new Date(due);
@@ -635,6 +656,10 @@ function computeDuePeople_() {
       else if (d < todayEnd)    buckets.today.push(person);
       else if (d < weekEnd)     buckets.thisWeek.push(person);
       else if (d < nextWeekEnd) buckets.nextWeek.push(person);
+      else                      buckets.noDate.push(person); // FIX: future-scheduled people
+                                                              // (e.g. newly added, due in 28+ days)
+                                                              // were previously falling through all
+                                                              // conditions and disappearing entirely.
     }
   }
 
@@ -650,18 +675,17 @@ function formatDate_(d) {
 
 
 // ─── REFRESH DUE STATUSES ────────────────────────────────────
-// FIX: now uses a single batch write instead of one setValue per row
 
 function refreshDueStatuses() {
-  const ss      = SpreadsheetApp.getActiveSpreadsheet();
-  const people  = ss.getSheetByName(SHEET_PEOPLE);
+  const ss        = SpreadsheetApp.getActiveSpreadsheet();
+  const people    = ss.getSheetByName(SHEET_PEOPLE);
   const followups = ss.getSheetByName(SHEET_FOLLOWUPS);
   if (!people) return;
 
   const pData = people.getDataRange().getValues();
   const pH    = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
   const pIdx  = h => pH.indexOf(h);
-  const dsCol = pIdx('duestatus'); // 0-based
+  const dsCol = pIdx('duestatus');
 
   const fData = followups ? followups.getDataRange().getValues() : [[]];
   const fH    = fData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
@@ -678,7 +702,6 @@ function refreshDueStatuses() {
   todayStart.setHours(0,0,0,0);
   const todayEnd = todayStart.getTime() + 86400000;
 
-  // Build the entire status column as an array, then write once
   const statusValues = [];
   for (let i = 1; i < pData.length; i++) {
     const pid = String(pData[i][pIdx('personid')]);
@@ -697,7 +720,6 @@ function refreshDueStatuses() {
   }
 
   if (statusValues.length > 0) {
-    // One write call instead of N individual setValue calls
     people.getRange(2, dsCol + 1, statusValues.length, 1).setValues(statusValues);
   }
 
@@ -869,10 +891,7 @@ function resetAllTriggers() {
 }
 
 
-
-
 // ─── API: DEBUG ANALYTICS ────────────────────────────────────
-// Hit ?action=debugAnalytics in browser to inspect raw sheet data
 
 function api_debugAnalytics() {
   try {
@@ -894,10 +913,10 @@ function api_debugAnalytics() {
     }));
 
     return {
-      headers:     iH,
-      totalRows:   iData.length - 1,
+      headers:   iH,
+      totalRows: iData.length - 1,
       sample,
-      now:         new Date().toString()
+      now:       new Date().toString()
     };
   } catch(e) {
     return { error: e.message };
@@ -909,23 +928,22 @@ function api_debugAnalytics() {
 
 function api_getAnalytics() {
   try {
-    const ss         = SpreadsheetApp.getActiveSpreadsheet();
-    const interSheet = ss.getSheetByName(SHEET_INTERACTIONS);
-    const peopleSheet= ss.getSheetByName(SHEET_PEOPLE);
+    const ss          = SpreadsheetApp.getActiveSpreadsheet();
+    const interSheet  = ss.getSheetByName(SHEET_INTERACTIONS);
+    const peopleSheet = ss.getSheetByName(SHEET_PEOPLE);
     if (!interSheet) return { summary:{}, weeksData:[], silentPeople:[] };
 
     const iData = interSheet.getDataRange().getValues();
     const iH    = iData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
     const iIdx  = k => iH.indexOf(k);
 
-    const now       = new Date();
-    const msDay     = 86400000;
-    const msWeek    = 7 * msDay;
+    const now    = new Date();
+    const msDay  = 86400000;
+    const msWeek = 7 * msDay;
 
-    // ── Build week buckets (last 12 weeks, Mon–Sun) ──────────
     const weekStart = (d) => {
-      const dt = new Date(d);
-      const day = dt.getDay(); // 0=Sun
+      const dt  = new Date(d);
+      const day = dt.getDay();
       const diff = (day === 0 ? -6 : 1 - day);
       const mon = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + diff);
       mon.setHours(0,0,0,0);
@@ -941,45 +959,31 @@ function api_getAnalytics() {
       weeks.push({ start, end, label, total: 0, reached: 0 });
     }
 
-    // ── This-week window ─────────────────────────────────────
-    const thisWeekStart = thisMonday;
-    const thisWeekEnd   = new Date(thisMonday.getTime() + msWeek);
-
-    // ── Last-contact tracking per person (for silent people) ─
-    const lastContactByPid = {}; // pid → { date, name }
-
-    let thisWeekTotal = 0;
+    const thisWeekStart    = thisMonday;
+    const thisWeekEnd      = new Date(thisMonday.getTime() + msWeek);
+    const lastContactByPid = {};
+    let thisWeekTotal      = 0;
 
     for (let i = 1; i < iData.length; i++) {
-      const row       = iData[i];
-      const tsRaw     = row[iIdx('timestamp')];
-      const outcome   = String(row[iIdx('outcometype')] || '').trim();
-      const result    = String(row[iIdx('result')]       || '').trim();
-      const pid       = String(row[iIdx('personid')]    || '');
-      const name      = String(row[iIdx('fullname')]    || '');
+      const row     = iData[i];
+      const tsRaw   = row[iIdx('timestamp')];
+      const outcome = String(row[iIdx('outcometype')] || '').trim();
+      const result  = String(row[iIdx('result')]      || '').trim();
+      const pid     = String(row[iIdx('personid')]   || '');
+      const name    = String(row[iIdx('fullname')]   || '');
       if (!tsRaw || !pid) continue;
 
-      // getValues() returns Date objects for date cells in Apps Script
-      // Handle both Date objects and strings defensively
-      let ts;
-      if (tsRaw instanceof Date) {
-        ts = tsRaw;
-      } else {
-        ts = new Date(tsRaw);
-      }
+      const ts = tsRaw instanceof Date ? tsRaw : new Date(tsRaw);
       if (isNaN(ts.getTime())) continue;
 
-      // Accept either OutcomeType='Successful' OR Result='Reached' to be defensive
       const isReached = outcome === 'Successful' || result === 'Reached';
 
-      // Update last-contact map (for silent people)
       if (isReached) {
         if (!lastContactByPid[pid] || ts > lastContactByPid[pid].date) {
           lastContactByPid[pid] = { date: ts, name };
         }
       }
 
-      // Bucket into weeks
       for (let w = 0; w < weeks.length; w++) {
         if (ts >= weeks[w].start && ts < weeks[w].end) {
           weeks[w].total++;
@@ -988,11 +992,9 @@ function api_getAnalytics() {
         }
       }
 
-      // This-week total (all attempts)
       if (ts >= thisWeekStart && ts < thisWeekEnd) thisWeekTotal++;
     }
 
-    // ── Week-on-week change (reached: this week vs last week) ─
     const thisWkReached = weeks[weeks.length - 1].reached;
     const lastWkReached = weeks[weeks.length - 2] ? weeks[weeks.length - 2].reached : 0;
     let weekChange = null;
@@ -1002,28 +1004,21 @@ function api_getAnalytics() {
       weekChange = 100;
     }
 
-    // ── Unique people reached (all time in window) ────────────
-    const uniquePeople = Object.keys(lastContactByPid).length;
+    const uniquePeople  = Object.keys(lastContactByPid).length;
+    const sixWeeksAgo   = new Date(now.getTime() - 42 * msDay);
+    const pData         = peopleSheet ? peopleSheet.getDataRange().getValues() : [[]];
+    const pH            = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+    const pIdx          = k => pH.indexOf(k);
 
-    // ── Silent people (no successful contact in 6+ weeks) ─────
-    const sixWeeksAgo = new Date(now.getTime() - 42 * msDay);
-    const pData  = peopleSheet ? peopleSheet.getDataRange().getValues() : [[]];
-    const pH     = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
-    const pIdx   = k => pH.indexOf(k);
-
-    // ── Reach rate: of all people called this week, how many were reached? ──
-    // Using interaction rows directly avoids the stale-NextDueDate problem:
-    // once a successful call is logged, NextDueDate moves forward, so counting
-    // by due date always under-counts the denominator.
     const calledThisWeekPids  = new Set();
     const reachedThisWeekPids = new Set();
 
     for (let i = 1; i < iData.length; i++) {
-      const row     = iData[i];
-      const tsRaw2  = row[iIdx('timestamp')];
-      const outcome2= String(row[iIdx('outcometype')] || '').trim();
-      const result2 = String(row[iIdx('result')]       || '').trim();
-      const pid2    = String(row[iIdx('personid')]    || '');
+      const row      = iData[i];
+      const tsRaw2   = row[iIdx('timestamp')];
+      const outcome2 = String(row[iIdx('outcometype')] || '').trim();
+      const result2  = String(row[iIdx('result')]      || '').trim();
+      const pid2     = String(row[iIdx('personid')]   || '');
       if (!tsRaw2 || !pid2) continue;
       const ts2 = tsRaw2 instanceof Date ? tsRaw2 : new Date(tsRaw2);
       if (isNaN(ts2.getTime())) continue;
@@ -1048,9 +1043,7 @@ function api_getAnalytics() {
 
       const last = lastContactByPid[pid];
       if (!last || last.date < sixWeeksAgo) {
-        const weeksSince = last
-          ? Math.floor((now - last.date) / msWeek)
-          : null;
+        const weeksSince = last ? Math.floor((now - last.date) / msWeek) : null;
         silentPeople.push({
           pid,
           name,
@@ -1089,20 +1082,17 @@ function api_getAnalytics() {
 
 
 // ─── API: ROLE FREQUENCY ─────────────────────────────────────
-// Returns average days between successful contacts, grouped by Role (column C).
-// Only counts people with at least 2 successful contacts so the average is meaningful.
 
 function api_getRoleFrequency() {
   try {
-    const ss           = SpreadsheetApp.getActiveSpreadsheet();
-    const peopleSheet  = ss.getSheetByName(SHEET_PEOPLE);
-    const interSheet   = ss.getSheetByName(SHEET_INTERACTIONS);
+    const ss          = SpreadsheetApp.getActiveSpreadsheet();
+    const peopleSheet = ss.getSheetByName(SHEET_PEOPLE);
+    const interSheet  = ss.getSheetByName(SHEET_INTERACTIONS);
     if (!peopleSheet || !interSheet) return { roles: [] };
 
-    // Build personId → role map
-    const pData    = peopleSheet.getDataRange().getValues();
-    const pH       = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
-    const pIdx     = h => pH.indexOf(h);
+    const pData      = peopleSheet.getDataRange().getValues();
+    const pH         = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+    const pIdx       = h => pH.indexOf(h);
     const personRole = {};
     for (let i = 1; i < pData.length; i++) {
       if (!isActiveVal_(pData[i][pIdx('active')])) continue;
@@ -1111,18 +1101,17 @@ function api_getRoleFrequency() {
       personRole[pid] = role;
     }
 
-    // Collect successful contact timestamps per person
-    const iData  = interSheet.getDataRange().getValues();
-    const iH     = iData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
-    const iIdx   = h => iH.indexOf(h);
-    const contactsByPerson = {}; // pid → sorted array of Date
+    const iData           = interSheet.getDataRange().getValues();
+    const iH              = iData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+    const iIdx            = h => iH.indexOf(h);
+    const contactsByPerson = {};
 
     for (let i = 1; i < iData.length; i++) {
       const outcome = String(iData[i][iIdx('outcometype')] || '').trim();
       const result  = String(iData[i][iIdx('result')]      || '').trim();
       if (outcome !== 'Successful' && result !== 'Reached') continue;
-      const pid  = String(iData[i][iIdx('personid')]);
-      const tsRaw= iData[i][iIdx('timestamp')];
+      const pid   = String(iData[i][iIdx('personid')]);
+      const tsRaw = iData[i][iIdx('timestamp')];
       if (!tsRaw) continue;
       const d = tsRaw instanceof Date ? tsRaw : new Date(tsRaw);
       if (isNaN(d.getTime())) continue;
@@ -1130,11 +1119,9 @@ function api_getRoleFrequency() {
       contactsByPerson[pid].push(d);
     }
 
-    // Sort timestamps and compute avg gap per person, then group by role
-    const roleGaps = {}; // role → array of avg-gap-days per person
-
+    const roleGaps = {};
     for (const [pid, dates] of Object.entries(contactsByPerson)) {
-      if (dates.length < 2) continue; // need at least 2 to compute a gap
+      if (dates.length < 2) continue;
       dates.sort((a, b) => a - b);
       let totalGap = 0;
       for (let i = 1; i < dates.length; i++) {
@@ -1146,11 +1133,10 @@ function api_getRoleFrequency() {
       roleGaps[role].push({ pid, avgGap, contactCount: dates.length });
     }
 
-    // Summarise per role
     const roles = Object.entries(roleGaps).map(([role, people]) => {
       const avgDays = Math.round(people.reduce((s, p) => s + p.avgGap, 0) / people.length);
       return { role, avgDays, peopleCount: people.length };
-    }).sort((a, b) => a.avgDays - b.avgDays); // fastest cadence first
+    }).sort((a, b) => a.avgDays - b.avgDays);
 
     return { roles };
   } catch(e) {
@@ -1160,22 +1146,20 @@ function api_getRoleFrequency() {
 
 
 // ─── API: SEARCH INTERACTIONS ────────────────────────────────
-// Full-text search across all interaction summaries, results, and names.
 
 function api_searchInteractions(query) {
   if (!query || query.trim().length < 2) return { results: [] };
   const q = query.trim().toLowerCase();
 
-  const ss           = SpreadsheetApp.getActiveSpreadsheet();
-  const interSheet   = ss.getSheetByName(SHEET_INTERACTIONS);
-  const peopleSheet  = ss.getSheetByName(SHEET_PEOPLE);
+  const ss          = SpreadsheetApp.getActiveSpreadsheet();
+  const interSheet  = ss.getSheetByName(SHEET_INTERACTIONS);
+  const peopleSheet = ss.getSheetByName(SHEET_PEOPLE);
   if (!interSheet) return { results: [] };
 
   const iData = interSheet.getDataRange().getValues();
   const iH    = iData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
   const iIdx  = k => iH.indexOf(k);
 
-  // Build name map for people
   const nameMap = {};
   if (peopleSheet) {
     const pData = peopleSheet.getDataRange().getValues();
@@ -1196,7 +1180,7 @@ function api_searchInteractions(query) {
 
     if (summary.indexOf(q) >= 0 || result.indexOf(q) >= 0 ||
         name.indexOf(q) >= 0 || next.indexOf(q) >= 0) {
-      const pid = String(row[iIdx('personid')] || '');
+      const pid   = String(row[iIdx('personid')] || '');
       const tsRaw = row[iIdx('timestamp')];
       results.push({
         interactionId: row[iIdx('interactionid')] || '',
@@ -1211,14 +1195,12 @@ function api_searchInteractions(query) {
     }
   }
 
-  // Newest first, cap at 50
   results.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
   return { results: results.slice(0, 50), total: results.length, query };
 }
 
 
 // ─── API: PERSON NOTES ───────────────────────────────────────
-// Persistent freeform notes stored on the PEOPLE row (Notes column).
 
 function api_getPersonNotes(personId) {
   if (!personId) return { notes: '' };
@@ -1232,7 +1214,7 @@ function api_getPersonNotes(personId) {
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][idx('personid')]) === String(personId)) {
       const notesCol = idx('notes');
-      const notes = notesCol >= 0 ? String(data[i][notesCol] || '') : '';
+      const notes    = notesCol >= 0 ? String(data[i][notesCol] || '') : '';
       return { notes, personId };
     }
   }
@@ -1248,7 +1230,6 @@ function api_savePersonNotes(personId, notes) {
   const headers = data[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
   const idx     = h => headers.indexOf(h);
 
-  // Ensure Notes column exists (add it if not)
   let notesCol = idx('notes');
   if (notesCol < 0) {
     const newCol = data[0].length + 1;
@@ -1265,7 +1246,6 @@ function api_savePersonNotes(personId, notes) {
   }
   return { success: false, error: 'Person not found.' };
 }
-
 
 
 // ─── MENU ────────────────────────────────────────────────────
@@ -1285,24 +1265,26 @@ function onOpen() {
 // ─── DEBUG ───────────────────────────────────────────────────
 
 function debugDuePeople() {
-  const ss      = SpreadsheetApp.getActiveSpreadsheet();
-  const people  = ss.getSheetByName('PEOPLE');
+  const ss        = SpreadsheetApp.getActiveSpreadsheet();
+  const people    = ss.getSheetByName('PEOPLE');
   const followups = ss.getSheetByName('FOLLOWUPS');
-  const pData   = people.getDataRange().getValues();
-  const pH      = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
-  const pIdx    = h => pH.indexOf(h);
-  const fData   = followups ? followups.getDataRange().getValues() : [[]];
-  const fH      = fData[0].map(h => String(h).trim().toLowerCase().replace(/\s/g,''));
-  const fIdx    = h => fH.indexOf(h);
+  const pData     = people.getDataRange().getValues();
+  const pH        = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+  const pIdx      = h => pH.indexOf(h);
+  const fData     = followups ? followups.getDataRange().getValues() : [[]];
+  const fH        = fData[0].map(h => String(h).trim().toLowerCase().replace(/\s/g,''));
+  const fIdx      = h => fH.indexOf(h);
 
   Logger.log('PEOPLE HEADERS: '   + JSON.stringify(pH));
   Logger.log('FOLLOWUP HEADERS: ' + JSON.stringify(fH));
 
   for (let i = 1; i < pData.length; i++) {
     Logger.log(JSON.stringify({
-      row: i+1, name: pData[i][pIdx('fullname')],
-      activeRaw: pData[i][pIdx('active')], isActive: isActiveVal_(pData[i][pIdx('active')]),
-      dueRaw: pData[i][pIdx('nextduedate')]
+      row:       i+1,
+      name:      pData[i][pIdx('fullname')],
+      activeRaw: pData[i][pIdx('active')],
+      isActive:  isActiveVal_(pData[i][pIdx('active')]),
+      dueRaw:    pData[i][pIdx('nextduedate')]
     }));
   }
 
