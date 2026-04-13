@@ -1,5 +1,5 @@
 // ============================================================
-// CALL TRACKER v2.0 — Google Apps Script
+// CALL TRACKER v3.0 — Google Apps Script
 // ============================================================
 
 const SHEET_PEOPLE       = 'PEOPLE';
@@ -103,6 +103,21 @@ function doGet(e) {
       return json_(api_debugAnalytics());
     }
 
+    if (action === 'searchInteractions') {
+      const query = e.parameter.query || '';
+      return json_(api_searchInteractions(query));
+    }
+
+    if (action === 'getPersonNotes') {
+      const personId = e.parameter.personId || '';
+      return json_(api_getPersonNotes(personId));
+    }
+
+    if (action === 'savePersonNotes') {
+      const body = JSON.parse(e.parameter.payload || '{}');
+      return json_(api_savePersonNotes(body.personId, body.notes));
+    }
+
     return json_({ ok: true });
 
   } catch (err) {
@@ -163,7 +178,7 @@ function setupSystem() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   const peopleHeaders      = ['PersonID','FullName','Role','CadenceDays','Active',
-                              'LastAttempt','LastSuccessfulContact','NextDueDate','DueStatus','Priority','Fellowship'];
+                              'LastAttempt','LastSuccessfulContact','NextDueDate','DueStatus','Priority','Fellowship','Notes'];
   const interactionHeaders = ['InteractionID','Timestamp','PersonID','FullName','Channel',
                               'Result','OutcomeType','Summary','NextAction','NextActionDateTime','Processed'];
   const followupHeaders    = ['TaskID','CreatedAt','PersonID','TaskType','DueDateTime',
@@ -175,6 +190,7 @@ function setupSystem() {
     ['MONDAY_FOLLOWUPS_HOUR','8'],
     ['DUE_SOON_DAYS','2'],
     ['TIMEZONE',''],
+    ['YOUR_NAME','Pastor'],
   ];
 
   function ensureSheet(name, headers) {
@@ -326,8 +342,8 @@ const SETTINGS_META = {
   MORNING_REMINDER_HOUR:  { label: 'Morning Reminder Hour', desc: 'Hour (0–23) to send the daily due-now email.' },
   DUESTATUS_REFRESH_HOUR: { label: 'Due Status Refresh Hour', desc: 'Hour (0–23) to automatically refresh due statuses.' },
   MONDAY_FOLLOWUPS_HOUR:  { label: 'Weekly Summary Hour', desc: 'Hour (0–23) to send the Monday weekly summary email.' },
-  DUE_SOON_DAYS:          { label: 'Due Soon (days)', desc: 'How many days ahead to consider someone "due soon".' },
-  TIMEZONE:               { label: 'Timezone', desc: 'Timezone string, e.g. America/New_York. Leave blank to use spreadsheet default.' }
+  TIMEZONE:               { label: 'Timezone', desc: 'Timezone string, e.g. America/New_York. Leave blank to use spreadsheet default.' },
+  YOUR_NAME:              { label: 'Your Name', desc: 'Your first name — shown in the home screen greeting and email reminders.' }
 };
 
 function api_getSettings() {
@@ -704,9 +720,10 @@ function api_getQuickStats() {
 // ─── EMAIL FUNCTIONS ─────────────────────────────────────────
 
 function sendMorningDueNowReminder() {
-  const data   = api_getDuePeople();
-  const appUrl = 'https://pikcalltracker.netlify.app/';
-  const emails = getSetting_('REMINDER_EMAIL');
+  const data     = api_getDuePeople();
+  const appUrl   = 'https://pikcalltracker.netlify.app/';
+  const emails   = getSetting_('REMINDER_EMAIL');
+  const userName = getSetting_('YOUR_NAME') || 'Pastor';
   if (!emails) return;
 
   function safe_(v) {
@@ -743,7 +760,7 @@ function sendMorningDueNowReminder() {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #e5e0d5;border-radius:20px;overflow:hidden;">
         <tr><td style="background:#244c43;padding:28px 32px 20px;">
           <div style="font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:#d7c28b;font-weight:700;margin-bottom:8px;">Pastoral Call Tracker</div>
-          <div style="font-family:Georgia,serif;font-size:32px;color:#fff;font-weight:700;margin-bottom:10px;">Morning Reminder</div>
+          <div style="font-family:Georgia,serif;font-size:32px;color:#fff;font-weight:700;margin-bottom:10px;">Good morning, ${safe_(userName)}.</div>
           <div style="font-size:14px;color:#e8f1ed;">${safe_(new Date().toDateString())}</div>
         </td></tr>
         <tr><td style="padding:20px 32px 10px;background:#faf9f6;">
@@ -769,9 +786,10 @@ function sendMorningDueNowReminder() {
 }
 
 function sendMondayFollowupsThisWeek() {
-  const data   = api_getDuePeople();
-  const appUrl = 'https://pikcalltracker.netlify.app/';
-  const emails = getSetting_('REMINDER_EMAIL');
+  const data     = api_getDuePeople();
+  const appUrl   = 'https://pikcalltracker.netlify.app/';
+  const emails   = getSetting_('REMINDER_EMAIL');
+  const userName = getSetting_('YOUR_NAME') || 'Pastor';
   if (!emails) return;
 
   function safe_(v) {
@@ -809,7 +827,7 @@ function sendMondayFollowupsThisWeek() {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #e5e0d5;border-radius:20px;overflow:hidden;">
         <tr><td style="background:#244c43;padding:28px 32px 20px;">
           <div style="font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:#d7c28b;font-weight:700;margin-bottom:8px;">Pastoral Call Tracker</div>
-          <div style="font-family:Georgia,serif;font-size:32px;color:#fff;font-weight:700;margin-bottom:10px;">Weekly Summary</div>
+          <div style="font-family:Georgia,serif;font-size:32px;color:#fff;font-weight:700;margin-bottom:10px;">Hi ${safe_(userName)}, here's your week.</div>
           <div style="font-size:14px;color:#e8f1ed;">Week of ${safe_(new Date().toDateString())}</div>
         </td></tr>
         <tr><td style="padding:12px 32px 8px;">
@@ -1139,6 +1157,115 @@ function api_getRoleFrequency() {
     return { roles: [], error: e.message };
   }
 }
+
+
+// ─── API: SEARCH INTERACTIONS ────────────────────────────────
+// Full-text search across all interaction summaries, results, and names.
+
+function api_searchInteractions(query) {
+  if (!query || query.trim().length < 2) return { results: [] };
+  const q = query.trim().toLowerCase();
+
+  const ss           = SpreadsheetApp.getActiveSpreadsheet();
+  const interSheet   = ss.getSheetByName(SHEET_INTERACTIONS);
+  const peopleSheet  = ss.getSheetByName(SHEET_PEOPLE);
+  if (!interSheet) return { results: [] };
+
+  const iData = interSheet.getDataRange().getValues();
+  const iH    = iData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+  const iIdx  = k => iH.indexOf(k);
+
+  // Build name map for people
+  const nameMap = {};
+  if (peopleSheet) {
+    const pData = peopleSheet.getDataRange().getValues();
+    const pH    = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+    const pIdx  = k => pH.indexOf(k);
+    for (let i = 1; i < pData.length; i++) {
+      nameMap[String(pData[i][pIdx('personid')])] = String(pData[i][pIdx('fullname')] || '');
+    }
+  }
+
+  const results = [];
+  for (let i = 1; i < iData.length; i++) {
+    const row     = iData[i];
+    const summary = String(row[iIdx('summary')]    || '').toLowerCase();
+    const result  = String(row[iIdx('result')]     || '').toLowerCase();
+    const name    = String(row[iIdx('fullname')]   || '').toLowerCase();
+    const next    = String(row[iIdx('nextaction')] || '').toLowerCase();
+
+    if (summary.indexOf(q) >= 0 || result.indexOf(q) >= 0 ||
+        name.indexOf(q) >= 0 || next.indexOf(q) >= 0) {
+      const pid = String(row[iIdx('personid')] || '');
+      const tsRaw = row[iIdx('timestamp')];
+      results.push({
+        interactionId: row[iIdx('interactionid')] || '',
+        personId:      pid,
+        personName:    nameMap[pid] || row[iIdx('fullname')] || '',
+        timestamp:     tsRaw ? formatDate_(tsRaw) : '',
+        result:        row[iIdx('result')]      || '',
+        outcome:       row[iIdx('outcometype')] || '',
+        summary:       row[iIdx('summary')]     || '',
+        nextAction:    row[iIdx('nextaction')]  || ''
+      });
+    }
+  }
+
+  // Newest first, cap at 50
+  results.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
+  return { results: results.slice(0, 50), total: results.length, query };
+}
+
+
+// ─── API: PERSON NOTES ───────────────────────────────────────
+// Persistent freeform notes stored on the PEOPLE row (Notes column).
+
+function api_getPersonNotes(personId) {
+  if (!personId) return { notes: '' };
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEOPLE);
+  if (!sheet) return { notes: '' };
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+  const idx     = h => headers.indexOf(h);
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][idx('personid')]) === String(personId)) {
+      const notesCol = idx('notes');
+      const notes = notesCol >= 0 ? String(data[i][notesCol] || '') : '';
+      return { notes, personId };
+    }
+  }
+  return { notes: '', personId };
+}
+
+function api_savePersonNotes(personId, notes) {
+  if (!personId) return { success: false, error: 'Missing personId.' };
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEOPLE);
+  if (!sheet) return { success: false, error: 'PEOPLE sheet not found.' };
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+  const idx     = h => headers.indexOf(h);
+
+  // Ensure Notes column exists (add it if not)
+  let notesCol = idx('notes');
+  if (notesCol < 0) {
+    const newCol = data[0].length + 1;
+    sheet.getRange(1, newCol).setValue('Notes').setFontWeight('bold')
+      .setBackground('#1a73e8').setFontColor('#ffffff');
+    notesCol = newCol - 1;
+  }
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][idx('personid')]) === String(personId)) {
+      sheet.getRange(i + 1, notesCol + 1).setValue(notes || '');
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'Person not found.' };
+}
+
 
 
 // ─── MENU ────────────────────────────────────────────────────
