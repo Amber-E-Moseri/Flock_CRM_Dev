@@ -1,0 +1,188 @@
+<div class="page" id="pg-guide">
+<div class="topbar">
+<button class="tb-btn" onclick="showPage('pg-home')">‹ Home</button>
+<span class="topbar-title">User Guide</span>
+</div>
+<div class="shell">
+<p class="form-kicker">Documentation</p>
+<h1 class="form-title">User Guide</h1>
+<p class="form-sub">Everything you need to know to use Flock effectively.</p>
+<link href="styles/guide.css" rel="stylesheet"/>
+<!-- Table of Contents -->
+<div class="guide-toc">
+<div class="guide-toc-title">Contents</div>
+<a href="#" onclick="document.getElementById('gs-overview').scrollIntoView({behavior:'smooth',block:'start'});return false;">1. Overview</a>
+<a href="#" onclick="document.getElementById('gs-home').scrollIntoView({behavior:'smooth',block:'start'});return false;">2. Home Screen</a>
+<a href="#" onclick="document.getElementById('gs-dash').scrollIntoView({behavior:'smooth',block:'start'});return false;">3. Who to Call</a>
+<a href="#" onclick="document.getElementById('gs-log').scrollIntoView({behavior:'smooth',block:'start'});return false;">4. Logging a Call</a>
+<a href="#" onclick="document.getElementById('gs-ai').scrollIntoView({behavior:'smooth',block:'start'});return false;">5. AI Log Assistant</a>
+<a href="#" onclick="document.getElementById('gs-history').scrollIntoView({behavior:'smooth',block:'start'});return false;">6. Past Notes</a>
+<a href="#" onclick="document.getElementById('gs-search').scrollIntoView({behavior:'smooth',block:'start'});return false;">7. Search</a>
+<a href="#" onclick="document.getElementById('gs-analytics').scrollIntoView({behavior:'smooth',block:'start'});return false;">8. Analytics</a>
+<a href="#" onclick="document.getElementById('gs-addperson').scrollIntoView({behavior:'smooth',block:'start'});return false;">9. Adding People</a>
+<a href="#" onclick="document.getElementById('gs-settings').scrollIntoView({behavior:'smooth',block:'start'});return false;">10. Settings</a>
+</div>
+<!-- 1. Overview -->
+<div class="guide-section" id="gs-overview">
+<div class="guide-section-header">
+<div class="guide-section-icon">🕊</div>
+<div class="guide-section-title">1. Overview</div>
+</div>
+<div class="guide-body">
+<p><strong>Flock</strong> is a pastoral call-tracking tool designed to help you stay consistently connected with the people in your care. It keeps track of who you have called, when each person is due for a follow-up, and what was discussed — so nothing falls through the cracks.</p>
+<p>Flock works by connecting to your contact list (stored in a Google Sheet) and showing you a prioritised call schedule each day. Every interaction you log is saved automatically.</p>
+</div>
+<div class="guide-tip"><span class="guide-tip-icon">💡</span>Flock works best when you log calls promptly after finishing them — this keeps the dashboard accurate and your next due dates up to date.</div>
+</div>
+<!-- 2. Home -->
+<div class="guide-section" id="gs-home">
+<div class="guide-section-header">
+<div class="guide-section-icon">🏠</div>
+<div class="guide-section-title">2. Home Screen</div>
+</div>
+<div class="guide-body">
+<p>The Home screen is your daily starting point. At a glance you can see three key numbers:</p>
+<div class="guide-badge-row">
+<span class="guide-badge" style="background:var(--accent-soft);color:var(--accent);">● Callbacks — people waiting for a return call</span>
+<span class="guide-badge" style="background:var(--danger-bg);color:var(--danger);">● Overdue — past their due date</span>
+<span class="guide-badge" style="background:var(--gold-soft);color:#92400e;">● Due Today — scheduled for today</span>
+</div>
+<p>Tap any stat box to jump straight to that section in the <strong>Who to Call</strong> dashboard. From Home you can also navigate to every other section of the app.</p>
+<p>The <strong>⚙ Settings icon</strong> (top right) opens app and people settings. The <strong>moon icon</strong> toggles dark mode.</p>
+</div>
+</div>
+<!-- 3. Who to Call -->
+<div class="guide-section" id="gs-dash">
+<div class="guide-section-header">
+<div class="guide-section-icon">📋</div>
+<div class="guide-section-title">3. Who to Call</div>
+</div>
+<div class="guide-body">
+<p>This is your prioritised call schedule. People are sorted into sections based on urgency:</p>
+<div class="guide-badge-row">
+<span class="guide-badge" style="background:var(--accent-soft);color:var(--accent);">● Callbacks</span>
+<span class="guide-badge" style="background:var(--danger-bg);color:var(--danger);">● Overdue</span>
+<span class="guide-badge" style="background:var(--gold-soft);color:#92400e;">● Due Today</span>
+<span class="guide-badge" style="background:var(--blue-bg);color:var(--blue);">● This Week</span>
+<span class="guide-badge" style="background:var(--surface-soft);color:var(--muted);">● No Date Set</span>
+</div>
+<p>The coloured strip at the top shows a count for each category — tap a category to jump to it. Tap <strong>Log</strong> next to any name to open the Log a Call form with that person pre-filled.</p>
+<p>People scheduled more than two weeks out are hidden — they will appear automatically when the time comes. Pull down to refresh the list.</p>
+</div>
+<div class="guide-tip"><span class="guide-tip-icon">💡</span>Work through <strong>Callbacks</strong> first, then <strong>Overdue</strong>, then <strong>Due Today</strong>. This keeps your most urgent commitments covered.</div>
+</div>
+<!-- 4. Log a Call -->
+<div class="guide-section" id="gs-log">
+<div class="guide-section-header">
+<div class="guide-section-icon">📞</div>
+<div class="guide-section-title">4. Logging a Call</div>
+</div>
+<div class="guide-body">
+<p>Use this form to record the outcome of any call. Here is the flow:</p>
+</div>
+<div class="guide-step"><div class="guide-step-num">1</div><div class="guide-step-text"><strong>Select a person</strong> — type their name in the search box and tap to select. Any recent interactions will appear below for context.</div></div>
+<div class="guide-step"><div class="guide-step-num">2</div><div class="guide-step-text"><strong>Pick a result</strong> — choose one of: <em>Reached</em>, <em>No Answer</em>, <em>Left Message</em>, or <em>Rescheduled</em>.</div></div>
+<div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-text"><strong>Set next action</strong> — choose <em>None</em>, <em>Callback</em> (they will call you back), or <em>Follow-up</em> (you will call them again). Choosing Callback or Follow-up reveals a date &amp; time picker.</div></div>
+<div class="guide-step"><div class="guide-step-num">4</div><div class="guide-step-text"><strong>Add notes</strong> (optional) — jot a brief summary. Tap the microphone button to use voice-to-text instead of typing.</div></div>
+<div class="guide-step"><div class="guide-step-num">5</div><div class="guide-step-text"><strong>Save Call</strong> — tap the green button at the bottom. A confirmation screen will offer to log another call or return to the dashboard.</div></div>
+<div class="guide-note"><span class="guide-note-icon">ℹ️</span>A date &amp; time is required when you choose <strong>Callback</strong> or <strong>Follow-up</strong> as the next action.</div>
+</div>
+<!-- 5. AI Log Assistant -->
+<div class="guide-section" id="gs-ai">
+<div class="guide-section-header">
+<div class="guide-section-icon">✨</div>
+<div class="guide-section-title">5. AI Log Assistant</div>
+</div>
+<div class="guide-body">
+<p>The AI Log Assistant lets you describe a call in plain language and automatically fills in the log form for you. Access it via the <strong>star icon</strong> in the Log a Call top bar, or from Settings.</p>
+</div>
+<div class="guide-step"><div class="guide-step-num">1</div><div class="guide-step-text">Tap the <strong>✨ icon</strong> in the top bar of Log a Call.</div></div>
+<div class="guide-step"><div class="guide-step-num">2</div><div class="guide-step-text">Type or speak a natural description of the call — e.g. <em>"Called Sarah, no answer, will try again Friday afternoon."</em></div></div>
+<div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-text">The AI parses your description and pre-fills the person, result, next action, date, and notes.</div></div>
+<div class="guide-step"><div class="guide-step-num">4</div><div class="guide-step-text">Review the filled-in details and tap <strong>Confirm &amp; Save</strong>.</div></div>
+<div class="guide-tip"><span class="guide-tip-icon">💡</span>Be specific about the person's name and any follow-up date — the AI will pick them up automatically.</div>
+</div>
+<!-- 6. Past Notes -->
+<div class="guide-section" id="gs-history">
+<div class="guide-section-header">
+<div class="guide-section-icon">📖</div>
+<div class="guide-section-title">6. Past Notes</div>
+</div>
+<div class="guide-body">
+<p><strong>Past Notes</strong> shows the full call history for any person. Use it to review previous conversations before making a call.</p>
+</div>
+<div class="guide-step"><div class="guide-step-num">1</div><div class="guide-step-text">Go to <strong>Past Notes</strong> from the Home screen.</div></div>
+<div class="guide-step"><div class="guide-step-num">2</div><div class="guide-step-text">Type a name in the search box to filter the contact list.</div></div>
+<div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-text">Tap a person's name to see every logged call — result, notes, and next steps — in reverse chronological order.</div></div>
+<div class="guide-note"><span class="guide-note-icon">ℹ️</span>You can also reach a person's history from the <strong>Who to Call</strong> dashboard by tapping their name.</div>
+</div>
+<!-- 7. Search -->
+<div class="guide-section" id="gs-search">
+<div class="guide-section-header">
+<div class="guide-section-icon">🔍</div>
+<div class="guide-section-title">7. Search</div>
+</div>
+<div class="guide-body">
+<p><strong>Search</strong> lets you find notes and calls across your entire contact list at once — useful when you remember something from a conversation but cannot recall who it was with.</p>
+<p>Start typing and results from both names and call notes will appear. Tap a result to view that person's full history.</p>
+</div>
+<div class="guide-tip"><span class="guide-tip-icon">💡</span>Search checks both contact names and the notes field, so you can search for keywords from a conversation.</div>
+</div>
+<!-- 8. Analytics -->
+<div class="guide-section" id="gs-analytics">
+<div class="guide-section-header">
+<div class="guide-section-icon">📊</div>
+<div class="guide-section-title">8. Analytics</div>
+</div>
+<div class="guide-body">
+<p>The <strong>Analytics</strong> page gives you a bird's-eye view of your follow-up activity over time. It shows:</p>
+</div>
+<div class="guide-step"><div class="guide-step-num">📈</div><div class="guide-step-text"><strong>Calls per week</strong> — a trend of how many calls you have logged each week.</div></div>
+<div class="guide-step"><div class="guide-step-num">✓</div><div class="guide-step-text"><strong>Reach rate</strong> — the percentage of attempts where you actually spoke to someone.</div></div>
+<div class="guide-step"><div class="guide-step-num">📅</div><div class="guide-step-text"><strong>Activity overview</strong> — a breakdown of call results (Reached, No Answer, Left Message, Rescheduled).</div></div>
+<div class="guide-body" style="margin-top:10px;"><p>Tap <strong>Refresh</strong> in the top bar to load the latest data.</p></div>
+</div>
+<!-- 9. Adding People -->
+<div class="guide-section" id="gs-addperson">
+<div class="guide-section-header">
+<div class="guide-section-icon">➕</div>
+<div class="guide-section-title">9. Adding People</div>
+</div>
+<div class="guide-body">
+<p>Add a new contact to your call list from <strong>Home → Add Person</strong>.</p>
+</div>
+<div class="guide-step"><div class="guide-step-num">1</div><div class="guide-step-text"><strong>Full Name</strong> — required. This is how the person will appear throughout the app.</div></div>
+<div class="guide-step"><div class="guide-step-num">2</div><div class="guide-step-text"><strong>Role</strong> — optional. E.g. Cell Leader, Coordinator, Manager.</div></div>
+<div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-text"><strong>Fellowship</strong> — optional. The group, campus, or community they belong to.</div></div>
+<div class="guide-step"><div class="guide-step-num">4</div><div class="guide-step-text"><strong>Priority</strong> — optional. E.g. High, Medium, Low — helps you identify important contacts at a glance.</div></div>
+<div class="guide-step"><div class="guide-step-num">5</div><div class="guide-step-text"><strong>Call Cadence (days)</strong> — how many days between calls. Defaults to 28 days. Flock uses this to calculate when each person is next due.</div></div>
+<div class="guide-step"><div class="guide-step-num">6</div><div class="guide-step-text">Tap <strong>Add to Call List</strong> to save. The person will appear on the dashboard immediately.</div></div>
+<div class="guide-tip"><span class="guide-tip-icon">💡</span>You can edit a person's cadence and active status any time from <strong>Settings → People Settings</strong>.</div>
+</div>
+<!-- 10. Settings -->
+<div class="guide-section" id="gs-settings">
+<div class="guide-section-header">
+<div class="guide-section-icon">⚙️</div>
+<div class="guide-section-title">10. Settings</div>
+</div>
+<div class="guide-body">
+<p>Access Settings from the ⚙ icon on the Home screen. There are two sub-sections:</p>
+</div>
+<div class="guide-step"><div class="guide-step-num">①</div><div class="guide-step-text"><strong>Your Name</strong> — enter your name here so Flock can use it in greetings and email reminders.</div></div>
+<div style="font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px;">App Settings</div>
+<div class="guide-step"><div class="guide-step-num">⏱</div><div class="guide-step-text"><strong>Reminders</strong> — configure whether you receive email reminders and at what time of day.</div></div>
+<div class="guide-step"><div class="guide-step-num">🌐</div><div class="guide-step-text"><strong>Timezone</strong> — set your local timezone so due dates and reminders are calculated correctly.</div></div>
+<div class="guide-step"><div class="guide-step-num">🕐</div><div class="guide-step-text"><strong>Hours</strong> — define your working hours so Flock does not schedule calls outside of them.</div></div>
+<div style="font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px;">People Settings</div>
+<div class="guide-step"><div class="guide-step-num">📅</div><div class="guide-step-text"><strong>Cadence</strong> — adjust the number of days between calls for any individual. Type a new number and tap <strong>Save</strong>.</div></div>
+<div class="guide-step"><div class="guide-step-num">🔘</div><div class="guide-step-text"><strong>Active / Inactive</strong> — toggle someone inactive to remove them from the dashboard without deleting their history. Toggle them back on when ready to resume.</div></div>
+<div class="guide-step"><div class="guide-step-num">✎</div><div class="guide-step-text"><strong>Edit details</strong> — tap the pencil icon next to any person to update their name, role, fellowship, or priority.</div></div>
+<div class="guide-note" style="margin-top:14px;"><span class="guide-note-icon">ℹ️</span>Changes to cadence take effect immediately — the dashboard will reflect new due dates the next time it loads.</div>
+</div>
+<div class="guide-divider"></div>
+<div style="text-align:center;padding:8px 0 16px;">
+<p style="font-size:13px;color:var(--muted);margin-bottom:14px;">You are all set — happy shepherding! 🕊</p>
+<button class="save-btn" onclick="showPage('pg-home')" style="max-width:220px;padding:12px;">Back to Home</button>
+</div>
+</div>
+</div>

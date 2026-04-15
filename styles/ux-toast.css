@@ -1,0 +1,6 @@
+
+  .ux-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(10px);background:rgba(26,26,24,.94);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;z-index:500;opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+  .ux-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  body.dark .ux-toast{background:rgba(255,255,255,.1);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.12)}
+  .person-row,.nav-card,.hist-person-row,.search-result-card,.log-btn,.tb-btn,.dark-toggle,.chip,.ac,.ai-rc,.ai-suggestion-btn,.ai-date-chip,.save-btn,.bsheet-save,.aset-save,.modal-save,.modal-cancel{transition:transform .08s ease, filter .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease}
+  .person-row:active,.nav-card:active,.hist-person-row:active,.search-result-card:active,.log-btn:active,.tb-btn:active,.dark-toggle:active,.chip:active,.ac:active,.ai-rc:active,.ai-suggestion-btn:active,.ai-date-chip:active,.save-btn:active,.bsheet-save:active,.aset-save:active,.modal-save:active,.modal-cancel:active{transform:scale(.985);filter:brightness(.98)}

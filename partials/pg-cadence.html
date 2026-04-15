@@ -1,0 +1,19 @@
+<div class="page" id="pg-cadence">
+<div class="topbar">
+<button class="tb-btn" onclick="showPage('pg-settings')">‹ Settings</button>
+<span class="topbar-title">People Settings</span>
+</div>
+<div class="shell">
+<p class="form-kicker">Configuration</p>
+<h1 class="form-title">People Settings</h1>
+<p class="form-sub">Set call cadence and toggle active status for each person.</p>
+<div class="set-search-wrap">
+<svg class="set-search-icon" fill="none" height="15" viewbox="0 0 16 16" width="15">
+<circle cx="6.5" cy="6.5" r="4.5" stroke="#7a7870" stroke-width="1.4"></circle>
+<path d="M10 10l3.5 3.5" stroke="#7a7870" stroke-linecap="round" stroke-width="1.4"></path>
+</svg>
+<input class="set-search" id="cad-filter" oninput="filterCadence()" placeholder="Search people…" type="text"/>
+</div>
+<div id="cad-list"></div>
+</div>
+</div>

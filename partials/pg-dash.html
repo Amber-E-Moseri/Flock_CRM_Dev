@@ -1,0 +1,22 @@
+<div class="page" id="pg-dash">
+<div class="topbar">
+<span class="topbar-title">Who to Call</span>
+<button class="tb-btn" onclick="showPage('pg-home')">Home</button>
+<button class="tb-btn" onclick="loadDash()">Refresh</button>
+<button class="tb-btn hi" onclick="showPage('pg-log')">Log Call</button>
+</div>
+<div class="sum-strip" id="sum-strip" style="display:none">
+<div class="sum-cell cb" onclick="jumpTo('s-cb')"><div class="sum-num2" id="sn-cb">0</div><div class="sum-lbl2">Callbacks</div></div>
+<div class="sum-cell ov" onclick="jumpTo('s-ov')"><div class="sum-num2" id="sn-ov">0</div><div class="sum-lbl2">Overdue</div></div>
+<div class="sum-cell td" onclick="jumpTo('s-td')"><div class="sum-num2" id="sn-td">0</div><div class="sum-lbl2">Today</div></div>
+<div class="sum-cell wk" onclick="jumpTo('s-wk')"><div class="sum-num2" id="sn-wk">0</div><div class="sum-lbl2">This Week</div></div>
+<div class="sum-cell wk" onclick="jumpTo('s-nx')"><div class="sum-num2" id="sn-nx">0</div><div class="sum-lbl2">Next Week</div></div>
+<div class="sum-cell" id="sum-nd" onclick="jumpTo('s-nd')"><div class="sum-num2" id="sn-nd">0</div><div class="sum-lbl2">No Date</div></div>
+</div>
+<div id="dash-today-count" style="display:block;text-align:center;padding:4px 16px 6px;font-size:11px;color:#2f7a4c;letter-spacing:.02em;opacity:.9;font-style:italic;">0 calls logged today</div>
+<div class="ptr-bar" id="ptr-bar" style="display:none">
+<svg fill="none" height="14" viewbox="0 0 16 16" width="14"><path d="M8 2v3l3-3M8 2l-3 3M2 8a6 6 0 1 0 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path></svg>
+    Pull down to refresh
+  </div>
+<div id="dash-body"></div>
+</div>

@@ -1,0 +1,45 @@
+<div class="page" id="pg-addperson">
+<div class="topbar">
+<button class="tb-btn" onclick="showPage('pg-home')">‹ Home</button>
+<span class="topbar-title">Add Person</span>
+</div>
+<div class="shell">
+<div class="success-screen" id="addperson-success">
+<div class="s-icon">✓</div>
+<div class="s-title" id="addperson-success-name"></div>
+<div class="s-sub">Added to your call list.</div>
+<button class="s-again" onclick="resetAddPerson()">Add another person</button>
+<button class="s-again" onclick="returnFromAddPerson()" style="margin-top:10px;background:var(--surface);color:var(--accent);border:1px solid var(--accent);">Back</button>
+</div>
+<div id="addperson-form">
+<p class="form-kicker">Contacts</p>
+<h1 class="form-title">Add Person</h1>
+<p class="form-sub">Add a new contact to your call list.</p>
+<div class="msg" id="addperson-msg"></div>
+<div class="field">
+<label class="field-label">Full Name <span style="color:var(--danger)">*</span></label>
+<input class="aset-input" id="ap-name" placeholder="e.g. John Smith" style="width:100%;padding:11px 14px;font-size:15px;" type="text"/>
+</div>
+<div class="field">
+<label class="field-label">Role <span style="font-weight:400;color:var(--muted)">— optional</span></label>
+<input class="aset-input" id="ap-role" placeholder="e.g. Coordinator, Cell leader, Manager" style="width:100%;padding:11px 14px;font-size:15px;" type="text"/>
+</div>
+<div class="field">
+<label class="field-label">Fellowship <span style="font-weight:400;color:var(--muted)">— optional</span></label>
+<input class="aset-input" id="ap-fellowship" placeholder="e.g. University of Manitoba, University of Lethbridge" style="width:100%;padding:11px 14px;font-size:15px;" type="text"/>
+</div>
+<div class="field">
+<label class="field-label">Priority <span style="font-weight:400;color:var(--muted)">— optional</span></label>
+<input class="aset-input" id="ap-priority" placeholder="e.g. High, Medium, Low" style="width:100%;padding:11px 14px;font-size:15px;" type="text"/>
+</div>
+<div class="field">
+<label class="field-label">Call Cadence (days)</label>
+<input class="aset-input" id="ap-cadence" max="365" min="1" style="width:100%;padding:11px 14px;font-size:15px;" type="number" value="28"/>
+<p class="field-hint">How many days between calls. Default is 28.</p>
+</div>
+</div>
+</div>
+<div class="save-bar" id="addperson-bar">
+<button class="save-btn" id="addperson-btn" onclick="submitAddPerson()">Add to Call List</button>
+</div>
+</div>

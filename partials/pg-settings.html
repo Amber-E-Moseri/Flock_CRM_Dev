@@ -1,0 +1,76 @@
+<div class="page" id="pg-settings">
+<div class="topbar">
+<button class="tb-btn" onclick="showPage('pg-home')">‹ Home</button>
+<span class="topbar-title">Settings</span>
+<button aria-label="User Guide" class="tb-btn icon-btn" onclick="showPage('pg-guide')" title="User Guide"><svg fill="none" height="17" viewbox="0 0 20 20" width="17"><rect height="16" rx="2" stroke="white" stroke-width="1.6" width="14" x="3" y="2"></rect><path d="M6 6h8M6 9.5h8M6 13h5" stroke="white" stroke-linecap="round" stroke-width="1.4"></path></svg></button>
+</div>
+<div class="shell">
+<p class="form-kicker">Configuration</p>
+<h1 class="form-title">Settings</h1>
+<p class="form-sub">Manage your app configuration and call cadence.</p>
+<!-- Your Name card -->
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:20px;">
+<div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">👤 Your Name</div>
+<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Used in greetings and email reminders.</div>
+<div style="display:flex;gap:8px;align-items:center;">
+<input id="settings-your-name" placeholder="e.g. Pastor John" style="flex:1;padding:10px 13px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft);font-family:inherit;font-size:15px;color:var(--text);outline:none;" type="text"/>
+<button id="your-name-btn" onclick="saveYourName()" style="padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Save</button>
+</div>
+<div id="your-name-status" style="font-size:12px;margin-top:6px;min-height:16px;color:var(--success);font-weight:600;"></div>
+</div>
+<div class="nav-card" onclick="showPage('pg-appsettings')">
+<div class="nav-icon soft">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" viewbox="0 0 24 24" width="20">
+<circle cx="12" cy="12" r="3"></circle>
+<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+</svg>
+</div>
+<div class="nav-text">
+<div class="nav-title">App Settings</div>
+<div class="nav-sub">Reminders, hours, timezone and more</div>
+</div>
+<span class="nav-arrow">›</span>
+</div>
+<div class="nav-card" onclick="showPage('pg-cadence')">
+<div class="nav-icon soft">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" viewbox="0 0 24 24" width="20">
+<circle cx="9" cy="7" r="3"></circle>
+<path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"></path>
+<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+<path d="M21 21v-2a4 4 0 0 0-3-3.85"></path>
+</svg>
+</div>
+<div class="nav-text">
+<div class="nav-title">People Settings</div>
+<div class="nav-sub">Manage cadence and active status per person</div>
+</div>
+<span class="nav-arrow">›</span>
+</div>
+<div class="nav-card" onclick="showPage('pg-search')">
+<div class="nav-icon soft">
+<svg fill="none" height="20" viewbox="0 0 20 20" width="20">
+<circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"></circle>
+<path d="M13 13l3.8 3.8" stroke="#244c43" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="nav-text">
+<div class="nav-title">Search</div>
+<div class="nav-sub">Find notes &amp; calls across everyone</div>
+</div>
+<span class="nav-arrow">›</span>
+</div>
+<div class="nav-card" onclick="openAiAssist()">
+<div class="nav-icon green">
+<svg fill="none" height="20" viewbox="0 0 18 18" width="20" xmlns="http://www.w3.org/2000/svg">
+<path d="M1.5 2.5C1.5 1.67 2.17 1 3 1h12c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5L1.5 16V2.5z" fill="white"></path>
+<path d="M9 4l.65 2H12l-1.7 1.25.65 2L9 8l-1.95 1.25.65-2L6 6h2.35L9 4z" fill="#244c43"></path>
+</svg>
+</div>
+<div class="nav-text">
+<div class="nav-title">AI Log Assistant</div>
+<div class="nav-sub">Describe a call and AI fills it in for you</div>
+</div>
+<span class="nav-arrow">›</span>
+</div>
+</div>
+</div>

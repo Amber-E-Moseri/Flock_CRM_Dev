@@ -1,0 +1,91 @@
+<div class="page" id="pg-log">
+<div class="topbar">
+<button class="tb-btn" onclick="showPage('pg-home')">‹ Home</button>
+<span class="topbar-title">Log a Call</span>
+<button aria-label="AI Log Assistant" class="tb-btn icon-btn" onclick="openAiAssist()" title="AI Log Assistant"><svg fill="none" height="18" viewbox="0 0 18 18" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 2.5C1.5 1.67 2.17 1 3 1h12c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5L1.5 16V2.5z" fill="white"></path><path d="M9 4l.65 2H12l-1.7 1.25.65 2L9 8l-1.95 1.25.65-2L6 6h2.35L9 4z" fill="#244c43"></path></svg></button>
+</div>
+<div class="shell">
+<div class="success-screen" id="success-screen">
+<div class="s-icon">✓</div>
+<div class="s-title">Call logged</div>
+<div class="s-sub" id="success-sub">Saved successfully.</div>
+<button class="s-again" onclick="resetLog()">Log another call</button>
+<button class="s-again" onclick="showPage('pg-dash')" style="margin-top:10px;background:var(--surface);color:var(--accent);border:1px solid var(--accent);">View Dashboard</button>
+</div>
+<div id="log-form">
+<p class="form-kicker">Follow-up</p>
+<h1 class="form-title">Log a Call</h1>
+<p class="form-sub">Record what happened and schedule next steps.</p>
+<div class="msg" id="msg-bar"></div>
+<div class="field">
+<label class="field-label">Person</label>
+<div class="search-wrap" id="search-wrap">
+<svg class="search-icon" fill="none" height="15" viewbox="0 0 16 16" width="15">
+<circle cx="6.5" cy="6.5" r="4.5" stroke="#7a7870" stroke-width="1.4"></circle>
+<path d="M10 10l3.5 3.5" stroke="#7a7870" stroke-linecap="round" stroke-width="1.4"></path>
+</svg>
+<input autocomplete="off" class="search-input" id="person-search" onfocus="onFocus()" oninput="onInput()" onkeydown="onKey(event)" placeholder="Type a name…" type="text"/>
+<div class="search-drop" id="search-drop"></div>
+</div>
+<div class="sel-pill" id="sel-pill">
+<div class="sel-av" id="sel-av"></div>
+<span class="sel-name" id="sel-name"></span>
+<button class="sel-x" onclick="clearPerson()">×</button>
+</div>
+<input id="person-id" type="hidden"/>
+</div>
+<div id="recent-interactions" style="display:none; margin-bottom:4px;">
+<button class="recent-toggle" id="recent-toggle" onclick="toggleRecent()" type="button">
+<span id="recent-toggle-label">Recent interactions</span>
+<span id="recent-toggle-arrow" style="transition:transform .2s">▾</span>
+</button>
+<div id="recent-body" style="display:none;"></div>
+</div>
+<div class="divider"></div>
+<div class="field">
+<label class="field-label">Result</label>
+<div class="chip-grid">
+<button class="chip" data-r="Reached" onclick="pickResult(this)" type="button"><span class="chip-icon">✓</span>Reached</button>
+<button class="chip" data-r="No Answer" onclick="pickResult(this)" type="button"><span class="chip-icon">-</span>No Answer</button>
+<button class="chip" data-r="Left Message" onclick="pickResult(this)" type="button"><span class="chip-icon">✉</span>Left Message</button>
+<button class="chip" data-r="Rescheduled Call" onclick="pickResult(this)" type="button"><span class="chip-icon">↻</span>Rescheduled</button>
+</div>
+</div>
+<div class="divider"></div>
+<div class="field">
+<label class="field-label">Next Action</label>
+<div class="action-grid">
+<button class="ac a-none" data-a="None" onclick="pickAction(this)" type="button"><span class="ac-icon">–</span>None</button>
+<button class="ac" data-a="Callback" onclick="pickAction(this)" type="button"><span class="ac-icon">↩</span>Callback</button>
+<button class="ac" data-a="Follow-up" onclick="pickAction(this)" type="button"><span class="ac-icon">✓</span>Follow-up</button>
+</div>
+</div>
+<div id="dateWrap">
+<label class="field-label">Date &amp; Time</label>
+<input id="next-dt" type="datetime-local"/>
+<p class="field-hint">Required for callback / follow-up.</p>
+</div>
+<div class="divider"></div>
+<div class="field">
+<label class="field-label">Notes <span style="font-weight:400;color:var(--line)">- optional</span></label>
+<div class="vtb-wrap">
+<textarea class="vtb-textarea" id="summary" placeholder="Brief summary of the conversation…"></textarea>
+<button class="vtb-mic" id="main-mic-btn" onclick="toggleVoice('summary','main-mic-btn')" title="Voice to text"><svg fill="none" height="15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="15"><rect height="12" rx="3" width="6" x="9" y="2"></rect><path d="M5 10a7 7 0 0 0 14 0"></path><line x1="12" x2="12" y1="19" y2="22"></line><line x1="8" x2="16" y1="22" y2="22"></line></svg></button>
+</div>
+</div>
+<div class="divider"></div>
+<div class="field">
+<label class="field-label">Action Items <span style="font-weight:400;color:var(--muted)">- optional</span></label>
+<p class="field-hint" style="margin-bottom:10px;">Things to do as a result of this call.</p>
+<div id="todo-list" style="margin-bottom:8px;"></div>
+<div style="display:flex;gap:8px;margin-bottom:6px;">
+<input id="todo-input" onkeydown="if(event.key==='Enter'){event.preventDefault();addTodoItem();}" placeholder="Add an action item…" style="flex:1;padding:10px 13px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft);font-family:inherit;font-size:14px;color:var(--text);outline:none;" type="text"/>
+<button onclick="addTodoItem()" style="padding:10px 14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:18px;font-weight:400;line-height:1;cursor:pointer;flex-shrink:0;" title="Add item" type="button">+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="save-bar" id="save-bar">
+<button class="save-btn" id="save-btn" onclick="saveCall()">Save Call</button>
+</div>
+</div>

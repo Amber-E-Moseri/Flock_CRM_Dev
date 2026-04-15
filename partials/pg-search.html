@@ -1,0 +1,18 @@
+<div class="page" id="pg-search">
+<div class="topbar">
+<button class="tb-btn" onclick="showPage('pg-home')">‹ Home</button>
+<span class="topbar-title">Search</span>
+</div>
+<div class="search-page-bar">
+<input autocomplete="off" class="search-page-input" id="search-page-input" oninput="onSearchInput()" onkeydown="if(event.key==='Enter')doSearch()" placeholder="Search notes, names, results…" type="search"/>
+<button class="tb-btn" onclick="doSearch()" style="background:var(--accent);padding:10px 16px;border-radius:var(--radius-sm);">Search</button>
+</div>
+<div class="shell" style="padding-top:16px;">
+<div id="search-results-area">
+<div class="search-empty" style="margin-top:40px;">
+<div style="font-size:32px;margin-bottom:8px;">🔍</div>
+        Search across all call notes, names, and results.
+      </div>
+</div>
+</div>
+</div>

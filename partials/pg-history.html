@@ -1,0 +1,19 @@
+<div class="page" id="pg-history">
+<div class="topbar">
+<button class="tb-btn" onclick="showPage('pg-home')">‹ Home</button>
+<span class="topbar-title">Past Notes</span>
+</div>
+<div class="shell">
+<p class="form-kicker">Call History</p>
+<h1 class="form-title">Past Notes</h1>
+<p class="form-sub">Select a person to view their call history.</p>
+<div class="set-search-wrap">
+<svg class="set-search-icon" fill="none" height="15" viewbox="0 0 16 16" width="15">
+<circle cx="6.5" cy="6.5" r="4.5" stroke="#7a7870" stroke-width="1.4"></circle>
+<path d="M10 10l3.5 3.5" stroke="#7a7870" stroke-linecap="round" stroke-width="1.4"></path>
+</svg>
+<input class="set-search" id="hist-filter" oninput="filterHistPeople()" placeholder="Search people…" type="text"/>
+</div>
+<div id="hist-people-list"></div>
+</div>
+</div>

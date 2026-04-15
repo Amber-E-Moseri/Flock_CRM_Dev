@@ -1,0 +1,33 @@
+<div class="page" id="pg-todos">
+<div class="topbar">
+<button class="tb-btn" onclick="showPage('pg-home')">‹ Home</button>
+<span class="topbar-title">To-Do List</span>
+<button class="tb-btn" onclick="loadTodos()">Refresh</button>
+</div>
+<div class="shell">
+<p class="form-kicker">Action Items</p>
+<h1 class="form-title">To-Do List</h1>
+<p class="form-sub">Things to do as a result of your calls.</p>
+<div class="todo-toolbar">
+<div aria-label="To-do filter" class="todo-seg" role="tablist">
+<button class="todo-filter-btn active" id="tf-open" onclick="setTodoFilter('open')">Open</button>
+<button class="todo-filter-btn" id="tf-all" onclick="setTodoFilter('all')">All</button>
+</div>
+<div class="todo-sort-wrap">
+<span class="todo-sort-label">Sort by</span>
+<select aria-label="Sort to-dos" class="todo-sort-select" id="ts-sort" onchange="setTodoSort(this.value)">
+<option value="person">Person</option>
+<option value="due">Due Date</option>
+</select>
+</div>
+</div>
+<div class="todo-add-row">
+<input class="todo-add-input" id="todo-direct-input" onkeydown="if(event.key==='Enter'){event.preventDefault();addTodoDirect();}" placeholder="@Name then your to-do (or just type for My Tasks)" type="text"/>
+<input class="todo-date-input" id="todo-direct-due" title="Optional due date" type="date"/>
+<button aria-label="Add to-do" class="todo-plus-btn" id="todo-direct-btn" onclick="addTodoDirect()" title="Add to-do">+</button>
+</div>
+<div id="todos-body">
+<div class="people-loading" style="padding:40px 0"><span>Loading</span><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></div>
+</div>
+</div>
+</div>
