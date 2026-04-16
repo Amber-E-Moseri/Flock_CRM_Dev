@@ -13,7 +13,7 @@
 <meta content="#244c43" id="pwa-theme" name="theme-color"/>
 <link href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMjQ0YzQzIi8+PHBhdGggZD0iTTUwIDgyIEM1MCA4MiAxMiA1NSAxMiAzMiBDMTIgMjAgMjEgMTMgMzIgMTYgQzM5IDE4IDQ1IDI0IDUwIDMwIEM1NSAyNCA2MSAxOCA2OCAxNiBDNzkgMTMgODggMjAgODggMzIgQzg4IDU1IDUwIDgyIDUwIDgyWiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYjg5MTQ2IiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNNTAgMTUgTDUzIDI3IEw2MCAyMiBMNTYgMzIgTDY4IDMwIEw2MCAzOCBMNjUgMzggTDUwIDU1IEwzNSAzOCBMNDAgMzggTDMyIDMwIEw0NCAzMiBMNDAgMjIgTDQ3IDI3IFoiIGZpbGw9IndoaXRlIi8+PHJlY3QgeD0iNDciIHk9IjU0IiB3aWR0aD0iNiIgaGVpZ2h0PSIxMCIgcng9IjIiIGZpbGw9IndoaXRlIi8+PC9zdmc+" id="fav-icon" rel="icon" type="image/svg+xml"/>
 <script src="js/theme.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Spectral:wght@500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chrono-node@2.7.6/dist/chrono.min.js"></script>
 <link href="styles/base.css" rel="stylesheet"/>
 </head>
@@ -72,14 +72,13 @@
 <button aria-label="AI Log Assistant" class="tb-btn icon-btn" onclick="openAiAssist()" title="AI Log Assistant">
 <svg fill="none" height="18" viewbox="0 0 18 18" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 2.5C1.5 1.67 2.17 1 3 1h12c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5L1.5 16V2.5z" fill="white"></path><path d="M9 4l.65 2H12l-1.7 1.25.65 2L9 8l-1.95 1.25.65-2L6 6h2.35L9 4z" fill="#244c43"></path></svg>
 </button>
-<button aria-label="Add Person" class="tb-btn icon-btn" onclick="openAddPerson()" title="Add Person">
+<button aria-label="Add Person" class="tb-btn icon-btn tb-addperson" onclick="openAddPerson()" title="Add Person">
 <svg fill="none" height="18" viewbox="0 0 20 20" width="18">
 <circle cx="8" cy="7" r="3.2" stroke="#fff" stroke-width="1.5"></circle>
 <path d="M2 17c0-3 2.5-4.8 6-4.8" stroke="#fff" stroke-linecap="round" stroke-width="1.5"></path>
 <path d="M15 11.5v5M12.5 14h5" stroke="#fff" stroke-linecap="round" stroke-width="1.8"></path>
 </svg>
 </button>
-<button class="dark-toggle" id="dark-toggle-btn" onclick="toggleDark()" title="Toggle dark mode"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button>
 <button aria-label="Settings" class="tb-btn icon-btn" onclick="showPage('pg-settings')" title="Settings">
 <svg fill="none" height="18" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24" width="18">
 <circle cx="12" cy="12" r="3"></circle>
@@ -350,7 +349,7 @@
 <div class="topbar">
 <span class="topbar-title">Who to Call</span>
 <button class="tb-btn" onclick="showPage('pg-home')">Home</button>
-<button class="tb-btn" onclick="loadDash()">Refresh</button>
+<button class="tb-btn" id="dash-refresh-btn" onclick="loadDash()">Refresh</button>
 <button class="tb-btn hi" onclick="showPage('pg-log')">Log Call</button>
 </div>
 <div class="sum-strip" id="sum-strip" style="display:none">
@@ -505,6 +504,18 @@
 <button id="your-name-btn" onclick="saveYourName()" style="padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Save</button>
 </div>
 <div id="your-name-status" style="font-size:12px;margin-top:6px;min-height:16px;color:var(--success);font-weight:600;"></div>
+</div>
+<div class="nav-card" onclick="toggleDark()">
+<div class="nav-icon soft">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" viewbox="0 0 24 24" width="20">
+<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+</svg>
+</div>
+<div class="nav-text">
+<div class="nav-title">Appearance</div>
+<div class="nav-sub">Toggle light or dark mode</div>
+</div>
+<span class="nav-arrow">&rsaquo;</span>
 </div>
 <div class="nav-card" onclick="showPage('pg-appsettings')">
 <div class="nav-icon soft">
@@ -816,7 +827,7 @@
 <!-- Step 3: Success -->
 <div id="ai-step-success" style="display:none;text-align:center;padding:24px 0;">
 <div style="font-size:48px;margin-bottom:10px;">✓</div>
-<div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--accent);margin-bottom:6px;">Call Logged!</div>
+<div style="font-family:'Spectral',serif;font-size:22px;color:var(--accent);margin-bottom:6px;">Call Logged!</div>
 <div id="ai-success-sub" style="font-size:14px;color:var(--muted);margin-bottom:20px;"></div>
 <button onclick="closeAiAssist();loadDash();" style="padding:12px 28px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Done</button>
 </div>
@@ -869,6 +880,28 @@
 </div>
 </div>
 </div>
+<nav aria-label="Primary navigation" class="tab-bar" id="mobile-tab-bar">
+<button class="tab-item" data-page="pg-home" type="button">
+<svg fill="none" viewbox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1v-10.5z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Home</span>
+</button>
+<button class="tab-item" data-page="pg-dash" type="button">
+<svg fill="none" viewbox="0 0 24 24"><rect height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" width="7" x="3" y="3"></rect><rect height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" width="7" x="14" y="3"></rect><rect height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" width="7" x="3" y="14"></rect><rect height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" width="7" x="14" y="14"></rect></svg>
+<span>Who to Call</span>
+</button>
+<button class="tab-item" data-page="pg-log" type="button">
+<svg fill="none" viewbox="0 0 24 24"><path d="M4 5h16M4 9h10M4 13h12M4 17h7" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path><circle cx="18" cy="16.5" r="3.5" stroke="currentColor" stroke-width="1.8"></circle><path d="M18 15v3M16.5 16.5h3" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+<span>Log</span>
+</button>
+<button class="tab-item" data-page="pg-history" type="button">
+<svg fill="none" viewbox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"></circle><path d="M12 7.5v5l3 2.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>History</span>
+</button>
+<button class="tab-item" data-page="pg-todos" type="button">
+<svg fill="none" viewbox="0 0 24 24"><rect height="18" rx="2.5" stroke="currentColor" stroke-width="1.8" width="18" x="3" y="3"></rect><path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+<span>Todos</span>
+</button>
+</nav>
 <script src="js/todos.js"></script>
 
 

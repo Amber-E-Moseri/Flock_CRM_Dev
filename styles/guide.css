@@ -8,7 +8,7 @@
       .guide-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
       .guide-section-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
       body.dark .guide-section-icon { background: var(--accent-soft); color: var(--accent); }
-      .guide-section-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); }
+      .guide-section-title { font-family: var(--font-head, 'Spectral', serif); font-size: 20px; color: var(--text); font-weight: 600; }
       .guide-body { font-size: 14px; color: var(--text); line-height: 1.7; }
       .guide-body p { margin-bottom: 10px; }
       .guide-step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }

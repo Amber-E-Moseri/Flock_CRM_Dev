@@ -20,9 +20,16 @@
   };
   var PAGE_HASH = {};
   Object.keys(HASH_MAP).forEach(function(h){ PAGE_HASH[HASH_MAP[h]] = h; });
-
   var _navigating = false;
   var _addPersonReturn = null;
+
+  function updateMobileTabState_(pageId) {
+    var bar = document.getElementById('mobile-tab-bar');
+    if (!bar) return;
+    bar.querySelectorAll('.tab-item').forEach(function(item) {
+      item.classList.toggle('active', item.getAttribute('data-page') === pageId);
+    });
+  }
 
   function activePageId_() {
     var active = document.querySelector('.page.active');
@@ -34,8 +41,16 @@
     if (id === 'pg-addperson' && currentId !== 'pg-addperson') {
       _addPersonReturn = { page: currentId || 'pg-home', scrollY: window.scrollY || 0 };
     }
-    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
-    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.page').forEach(function(p){
+      p.classList.remove('active');
+      p.classList.remove('page-in');
+    });
+    var targetPage = document.getElementById(id);
+    if (!targetPage) return;
+    targetPage.classList.add('active');
+    targetPage.classList.add('page-in');
+    setTimeout(function(){ targetPage.classList.remove('page-in'); }, 220);
+    updateMobileTabState_(id);
     window.scrollTo(0,0);
     // Update hash without triggering hashchange handler
     if (pushState !== false) {
@@ -142,6 +157,18 @@
       });
   }
 
+  function hapticTick_() {
+    if (navigator.vibrate) navigator.vibrate(30);
+  }
+
+  document.addEventListener('click', function(e) {
+    var tab = e.target.closest('#mobile-tab-bar .tab-item');
+    if (!tab) return;
+    var pageId = tab.getAttribute('data-page');
+    if (!pageId) return;
+    showPage(pageId);
+  });
+
   function getGreeting_() {
     var h = new Date().getHours();
     return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
@@ -159,8 +186,9 @@
         var nameEntry = Array.isArray(settings) && settings.find(function(s){ return s.key === 'YOUR_NAME'; });
         window._userName = (nameEntry && nameEntry.val) ? nameEntry.val : '';
         document.getElementById('home-greeting').textContent = gr + ', ' + window._userName + '.';
-      }).catch(function(){
+      }).catch(function(e){
         document.getElementById('home-greeting').textContent = gr + '.';
+        console.warn('[Flock]', e);
       });
     }
     var now = Date.now();
@@ -196,7 +224,11 @@
     var h = '<div class="section" id="' + sec.id + '">';
     h += '<div class="sec-head"><span class="sec-pip ' + sec.pip + '"></span><span class="sec-title2">' + esc(sec.label) + '</span><span class="sec-badge ' + sec.badge + '">' + arr.length + '</span></div>';
     if (!arr.length) {
-      h += '<div class="empty-row">None - all clear here </div>';
+      var emptyCopy = 'No calls in this section right now.';
+      if (sec.key === 'callbacks') emptyCopy = 'No callbacks waiting right now.';
+      else if (sec.key === 'overdue') emptyCopy = 'No calls overdue - you are all caught up.';
+      else if (sec.key === 'today') emptyCopy = 'No calls due today - you are on track.';
+      h += '<div class="empty-row">' + esc(emptyCopy) + '</div>';
     } else arr.forEach(function(p){
       var pid = esc(p.id);
       h += '<div class="person-row ' + sec.row + ' js-dash-open" data-pid="' + pid + '" data-name="' + esc(p.name || '') + '" data-sec="' + sec.id + '">';
@@ -287,6 +319,8 @@
 
   function loadDash() {
     var seq = ++_dashLoadSeq;
+    var refreshBtn = document.getElementById('dash-refresh-btn');
+    if (refreshBtn) refreshBtn.classList.add('loading');
     if (_dashDueSnapshot) renderDash(_dashDueSnapshot);
     else showDashLoading();
     if (_dashTodaySnapshot) applyDashTodayCount(_dashTodaySnapshot);
@@ -296,10 +330,12 @@
         if (seq !== _dashLoadSeq) return;
         _dashDueSnapshot = due || {};
         renderDash(_dashDueSnapshot);
+        if (refreshBtn) refreshBtn.classList.remove('loading');
       })
       .catch(function(e){
         if (seq !== _dashLoadSeq) return;
         document.getElementById('dash-body').innerHTML = '<div class="err-box">Could not load data. Try refreshing.<br><small>' + esc(String(e)) + '</small></div>';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
       });
 
     apiFetch('getTodayCount')
@@ -487,8 +523,9 @@
       recentOpen = true;
       body.style.display = 'block';
       if (arrow) arrow.style.transform = 'rotate(180deg)';
-    }).catch(function() {
+    }).catch(function(e) {
       wrap.style.display = 'none';
+      console.warn('[Flock]', e);
     });
   }
 
@@ -602,6 +639,7 @@
       .then(function(res){
         setSaving(false);
         if (res && res.success) {
+          hapticTick_();
           lastSig = sig; lastAt = Date.now();
           // Capture pending action item text, then save action items if any
           if (window.flushPendingLogTodoItem) window.flushPendingLogTodoItem();
@@ -762,8 +800,9 @@
         h += '</div>';
       });
       panel.innerHTML = h;
-    }).catch(function() {
+    }).catch(function(e) {
       panel.innerHTML = '<div class="hist-inline-empty">Could not load history.</div>';
+      console.warn('[Flock]', e);
     });
   }
 function renderHistory(list, personName) {
@@ -890,6 +929,7 @@ function renderHistory(list, personName) {
     apiPost("saveSetting", { key: "YOUR_NAME", val: val }).then(function(res) {
       btn.disabled = false; btn.textContent = "Save";
       if (res && res.success) {
+        hapticTick_();
         window._userName = val;
         var greetEl = document.getElementById("home-greeting");
         if (greetEl) { greetEl.textContent = getGreeting_() + ", " + val + "."; }
@@ -897,9 +937,10 @@ function renderHistory(list, personName) {
       } else {
         if (stat) { stat.textContent = "Error saving."; stat.style.color = "var(--danger)"; }
       }
-    }).catch(function() {
+    }).catch(function(e) {
       btn.disabled = false; btn.textContent = "Save";
       if (stat) { stat.textContent = "Error saving."; stat.style.color = "var(--danger)"; }
+      console.warn('[Flock]', e);
     });
   }
 
@@ -913,6 +954,7 @@ function renderHistory(list, personName) {
     apiPost('saveSetting', { key: key, val: val }).then(function(res) {
       if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
       if (res && res.success) {
+        hapticTick_();
         if (key === 'YOUR_NAME') {
           window._userName = val.trim() || ''; // update cache immediately
           // Also update the greeting on the home screen right now if it exists
@@ -926,9 +968,10 @@ function renderHistory(list, personName) {
       } else {
         if (stat) { stat.textContent = '!'; stat.className = 'aset-status err'; }
       }
-    }).catch(function() {
+    }).catch(function(e) {
       if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
       if (stat) { stat.textContent = '!'; stat.className = 'aset-status err'; }
+      console.warn('[Flock]', e);
     });
   }
 
@@ -1024,10 +1067,11 @@ function renderHistory(list, personName) {
           if (stat) { stat.textContent = '!'; stat.className = 'cad-status err'; }
         }
       })
-      .catch(function() {
+      .catch(function(e) {
         btn.disabled = false;
         btn.textContent = 'Save';
         if (stat) { stat.textContent = '!'; stat.className = 'cad-status err'; }
+        console.warn('[Flock]', e);
       });
   }
 
@@ -1053,11 +1097,12 @@ function renderHistory(list, personName) {
           if (stat) { stat.textContent = '!'; stat.className = 'cad-status err'; }
         }
       })
-      .catch(function() {
+      .catch(function(e) {
         chk.disabled = false;
         chk.checked = !newActive;
         if (lbl) { lbl.textContent = !newActive ? 'Active' : 'Inactive'; lbl.className = 'sw-label ' + (!newActive ? 'on' : 'off'); }
         if (stat) { stat.textContent = '!'; stat.className = 'cad-status err'; }
+        console.warn('[Flock]', e);
       });
   }
 
@@ -1168,6 +1213,7 @@ function renderHistory(list, personName) {
   window.onload = function() {
     var hash = window.location.hash.replace('#', '');
     var pageId = (hash && HASH_MAP[hash]) ? HASH_MAP[hash] : 'pg-home';
+    initBottomSheetSwipe_();
     loadGuidePagePartial().then(function() {
       showPage(pageId, false);
     }, function() {
@@ -1494,18 +1540,23 @@ function renderHistory(list, personName) {
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   function toggleDark() {
     var isDark = document.body.classList.toggle('dark');
-    try { localStorage.setItem('ct-dark', isDark ? '1' : '0'); } catch(e) {}
-    document.getElementById('dark-toggle-btn').innerHTML = isDark ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="7.05" y2="7.05"/><line x1="16.95" y1="16.95" x2="19.07" y2="19.07"/><line x1="19.07" y1="4.93" x2="16.95" y2="7.05"/><line x1="7.05" y1="16.95" x2="4.93" y2="19.07"/></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+    try {
+      localStorage.setItem('ct-dark', isDark ? '1' : '0');
+      localStorage.setItem('flock-theme', isDark ? 'dark' : 'light');
+    } catch(e) {
+      console.warn('[Flock]', e);
+    }
   }
   (function() {
     try {
-      var pref = localStorage.getItem('ct-dark');
-      if (pref === '1') {
-        document.body.classList.add('dark');
-        var btn = document.getElementById('dark-toggle-btn');
-        if (btn) btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="7.05" y2="7.05"/><line x1="16.95" y1="16.95" x2="19.07" y2="19.07"/><line x1="19.07" y1="4.93" x2="16.95" y2="7.05"/><line x1="7.05" y1="16.95" x2="4.93" y2="19.07"/></svg>';
-      }
-    } catch(e) {}
+      var saved = localStorage.getItem('flock-theme');
+      var legacy = localStorage.getItem('ct-dark');
+      var prefersDark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      var useDark = saved ? (saved === 'dark') : (legacy ? legacy === '1' : prefersDark);
+      if (useDark) document.body.classList.add('dark');
+    } catch(e) {
+      console.warn('[Flock]', e);
+    }
   })();
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1531,13 +1582,17 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     var noneBtn = document.querySelector('#bsheet [data-a="None"]');
     if (noneBtn) noneBtn.className = 'ac a-none a-sel';
     document.getElementById('bsheet-backdrop').classList.add('open');
-    document.getElementById('bsheet').classList.add('open');
+    var sheet = document.getElementById('bsheet');
+    sheet.style.transform = '';
+    sheet.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
 
   function closeBsheet() {
     document.getElementById('bsheet-backdrop').classList.remove('open');
-    document.getElementById('bsheet').classList.remove('open');
+    var sheet = document.getElementById('bsheet');
+    sheet.classList.remove('open');
+    sheet.style.transform = '';
     document.body.style.overflow = '';
     stopVoice();
   }
@@ -1639,6 +1694,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     savePromise.then(function(res) {
       bsSaving = false;
       if (res && res.success) {
+        hapticTick_();
         var quickTodos = aiAssist.todos || [];
         if (quickTodos.length && res.interactionId) {
           apiPost('saveTodos', { payload: {
@@ -1897,6 +1953,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       var todoItems = (window.getTodoItems ? window.getTodoItems() : []);
       if (todoItems.length) payload._queuedTodos = todoItems;
       queueOfflineCall(payload);
+      hapticTick_();
       var sig = JSON.stringify(payload); lastSig = sig; lastAt = Date.now();
       document.getElementById('log-form').style.display = 'none';
       document.getElementById('success-sub').textContent = 'Saved offline - will sync when reconnected.' + (todoItems.length ? ' ' + todoItems.length + ' action item' + (todoItems.length > 1 ? 's' : '') + ' queued.' : '');
@@ -1926,10 +1983,11 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       document.getElementById('notes-modal-ta').value = (res && res.notes) ? res.notes : '';
       document.getElementById('notes-modal-ta').disabled = false;
       document.getElementById('notes-save-btn').disabled = false;
-    }).catch(function() {
+    }).catch(function(e) {
       document.getElementById('notes-modal-ta').value = '';
       document.getElementById('notes-modal-ta').disabled = false;
       document.getElementById('notes-save-btn').disabled = false;
+      console.warn('[Flock]', e);
     });
   }
 
@@ -1951,6 +2009,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       .then(function(res) {
         btn.disabled = false; btn.textContent = 'Save Notes';
         if (res && res.success) {
+          hapticTick_();
           msg.textContent = 'Notes saved.'; msg.className = 'modal-msg ok';
           setTimeout(function() { msg.className = 'modal-msg'; }, 2500);
         } else {
@@ -2039,9 +2098,45 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
 
   function closeAiAssist() {
     document.getElementById('ai-backdrop').classList.remove('open');
-    document.getElementById('ai-bsheet').classList.remove('open');
+    var sheet = document.getElementById('ai-bsheet');
+    sheet.classList.remove('open');
+    sheet.style.transform = '';
     document.body.style.overflow = '';
     stopVoice();
+  }
+
+  var _sheetSwipeReady = false;
+  function initBottomSheetSwipe_() {
+    if (_sheetSwipeReady) return;
+    _sheetSwipeReady = true;
+    function wireSwipe(sheetId, onDismiss) {
+      var sheet = document.getElementById(sheetId);
+      if (!sheet) return;
+      var startY = 0;
+      var canDrag = false;
+      var dragging = false;
+      sheet.addEventListener('touchstart', function(e) {
+        if (!sheet.classList.contains('open')) return;
+        canDrag = sheet.scrollTop <= 0;
+        dragging = false;
+        startY = e.touches[0].clientY;
+      }, { passive: true });
+      sheet.addEventListener('touchmove', function(e) {
+        if (!canDrag || !sheet.classList.contains('open')) return;
+        var dy = e.touches[0].clientY - startY;
+        if (dy <= 0) return;
+        dragging = true;
+        sheet.style.transform = 'translateY(' + dy + 'px)';
+      }, { passive: true });
+      sheet.addEventListener('touchend', function(e) {
+        if (!sheet.classList.contains('open') || !canDrag || !dragging) return;
+        var dy = e.changedTouches[0].clientY - startY;
+        if (dy > 120) onDismiss();
+        else sheet.style.transform = '';
+      });
+    }
+    wireSwipe('bsheet', closeBsheet);
+    wireSwipe('ai-bsheet', closeAiAssist);
   }
 
   function aiShowStep(step) {
@@ -2283,6 +2378,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
 
     savePromise.then(function(res) {
       if (res && res.success) {
+        hapticTick_();
         // Extract action items from summary text and save as todos
         var aiTodos = extractTodosFromText(p.summary || '');
         if (aiTodos.length && res.interactionId) {
