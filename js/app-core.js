@@ -1,7 +1,13 @@
 ﻿
+(function () {
   var API = (function() {
     var m = document.querySelector('meta[name="flock-api-url"]');
     return (m && m.getAttribute('content') ? m.getAttribute('content').trim() : '');
+  })();
+  var API_TOKEN = (function() {
+    var m = document.querySelector('meta[name="flock-api-token"]');
+    if (m && m.getAttribute('content')) return m.getAttribute('content').trim();
+    try { return (localStorage.getItem('flock-api-token') || '').trim(); } catch(e) { return ''; }
   })();
   //  Hash-based routing 
   var HASH_MAP = {
@@ -118,6 +124,7 @@
         url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
       });
     }
+    if (API_TOKEN) url += '&token=' + encodeURIComponent(API_TOKEN);
     var controller = new AbortController();
     var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
     return fetch(url, { method: 'GET', redirect: 'follow', signal: controller.signal })
@@ -143,6 +150,7 @@
   function apiPost(action, payload) {
     if (!API) return Promise.reject(new Error('API URL is not configured.'));
     payload = payload || {};
+    if (API_TOKEN && !payload.token) payload.token = API_TOKEN;
     var controller = new AbortController();
     var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
     return fetch(API + '?action=' + encodeURIComponent(action), {
@@ -273,6 +281,7 @@
 
   function ini(name){ if(!name) return '?'; var p = String(name).trim().split(/\s+/); return p.length === 1 ? p[0][0].toUpperCase() : (p[0][0] + p[p.length-1][0]).toUpperCase(); }
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function escRe_(s){ return String(s == null ? '' : s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
   function renderSection(sec, people) {
     var arr = Array.isArray(people) ? people : [];
@@ -2334,19 +2343,26 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       // â”€â”€ Summary: always use the description so notes are never blank â”€â”€
       var summary = desc;
 
-      // â”€â”€ Person matching: first name OR full name, case-insensitive â”€â”€
+      // â”€â”€ Person matching: prioritize full-name word-boundary matches â”€â”€
       var personId = '';
       var personName = '';
       var bestScore = 0;
       people.forEach(function(p) {
-        var nameLower = p.name.toLowerCase();
-        var parts = nameLower.split(/\s+/);
+        var nameRaw = String(p && p.name || '');
+        var nameLower = nameRaw.toLowerCase();
+        var parts = nameLower.split(/\s+/).filter(function(part){ return part && part.length > 2; });
         var score = 0;
+        if (!parts.length) return;
+        var fullNameRe = new RegExp('\\b' + parts.map(function(part){ return escRe_(part); }).join('\\s+') + '\\b', 'i');
+        if (fullNameRe.test(desc)) score += 4;
         parts.forEach(function(part) {
-          if (part.length > 1 && lower.indexOf(part) >= 0) score++;
+          var re = new RegExp('\\b' + escRe_(part) + '\\b', 'i');
+          if (re.test(desc)) score++;
         });
-        // First name alone is enough
-        if (parts[0] && parts[0].length > 1 && lower.indexOf(parts[0]) >= 0) score += 0.5;
+        if (parts[0]) {
+          var firstRe = new RegExp('\\b' + escRe_(parts[0]) + '\\b', 'i');
+          if (firstRe.test(desc)) score += 0.5;
+        }
         if (score > bestScore) { bestScore = score; personId = p.id; personName = p.name; }
       });
       if (bestScore === 0) { personId = ''; personName = ''; }
@@ -2578,4 +2594,109 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       todos: extractTodosFromText(summary)
     };
   }
+
+  function exposeState_(name, getter, setter) {
+    try {
+      Object.defineProperty(window, name, {
+        configurable: true,
+        enumerable: false,
+        get: getter,
+        set: setter
+      });
+    } catch (e) {
+      try { window[name] = getter(); } catch (_) {}
+    }
+  }
+
+  Object.assign(window, {
+    showPage: showPage,
+    openAddPerson: openAddPerson,
+    returnFromAddPerson: returnFromAddPerson,
+    apiFetch: apiFetch,
+    apiPost: apiPost,
+    hapticTick_: hapticTick_,
+    getGreeting_: getGreeting_,
+    getPeople: getPeople,
+    invalidatePeopleCache: invalidatePeopleCache,
+    loadHome: loadHome,
+    ini: ini,
+    esc: esc,
+    renderSection: renderSection,
+    renderDash: renderDash,
+    loadDash: loadDash,
+    jumpTo: jumpTo,
+    goToDashSection: goToDashSection,
+    goLogPerson: goLogPerson,
+    initLogPage: initLogPage,
+    onFocus: onFocus,
+    onInput: onInput,
+    onKey: onKey,
+    pickResult: pickResult,
+    pickAction: pickAction,
+    saveCall: saveCall,
+    resetLog: resetLog,
+    resetLogForm: resetLogForm,
+    goHistoryPerson: goHistoryPerson,
+    initHistoryPage: initHistoryPage,
+    filterHistPeople: filterHistPeople,
+    renderHistPeopleList: renderHistPeopleList,
+    renderHistory: renderHistory,
+    initCadencePage: initCadencePage,
+    loadAppSettings: loadAppSettings,
+    initSettingsPage: initSettingsPage,
+    saveYourName: saveYourName,
+    saveAppSetting: saveAppSetting,
+    asetPickBool: asetPickBool,
+    filterCadence: filterCadence,
+    renderCadence: renderCadence,
+    saveCad: saveCad,
+    toggleActive: toggleActive,
+    initAddPersonPage: initAddPersonPage,
+    resetAddPerson: resetAddPerson,
+    submitAddPerson: submitAddPerson,
+    loadAnalytics: loadAnalytics,
+    setAnalyticsRange: setAnalyticsRange,
+    openEditModal: openEditModal,
+    closeEditModal: closeEditModal,
+    submitEditPerson: submitEditPerson,
+    toggleDark: toggleDark,
+    openBsheet: openBsheet,
+    closeBsheet: closeBsheet,
+    bsPick: bsPick,
+    saveBsheet: saveBsheet,
+    toggleVoice: toggleVoice,
+    stopVoice: stopVoice,
+    queueOfflineCall: queueOfflineCall,
+    syncOfflineQueue: syncOfflineQueue,
+    openNotesModal: openNotesModal,
+    closeNotesModal: closeNotesModal,
+    savePersonNotes: savePersonNotes,
+    onSearchInput: onSearchInput,
+    doSearch: doSearch,
+    openAiAssist: openAiAssist,
+    closeAiAssist: closeAiAssist,
+    runAiParse: runAiParse,
+    aiGoBack: aiGoBack,
+    aiOverrideSearch: aiOverrideSearch,
+    aiSelectPerson: aiSelectPerson,
+    aiPickResult: aiPickResult,
+    aiPickAction: aiPickAction,
+    confirmAiLog: confirmAiLog,
+    inferAssistFromText: inferAssistFromText,
+    extractTodosFromText: extractTodosFromText,
+    clearPerson: clearPerson,
+    toggleRecent: toggleRecent
+  });
+
+  exposeState_('allPeople', function(){ return allPeople; }, function(v){ allPeople = Array.isArray(v) ? v : []; });
+  exposeState_('selResult', function(){ return selResult; }, function(v){ selResult = String(v || ''); });
+  exposeState_('selAction', function(){ return selAction; }, function(v){ selAction = String(v || 'None'); });
+  exposeState_('bsPid', function(){ return bsPid; }, function(v){ bsPid = v; });
+  exposeState_('bsName', function(){ return bsName; }, function(v){ bsName = v; });
+  exposeState_('bsResult', function(){ return bsResult; }, function(v){ bsResult = v; });
+  exposeState_('bsAction', function(){ return bsAction; }, function(v){ bsAction = v; });
+  exposeState_('_aiParsed', function(){ return _aiParsed; }, function(v){ _aiParsed = v; });
+  exposeState_('_offlineQueue', function(){ return _offlineQueue; }, function(v){ _offlineQueue = Array.isArray(v) ? v : []; });
+  exposeState_('_peopleCache', function(){ return _peopleCache; }, function(v){ _peopleCache = v || { data: null, promise: null }; });
+})();
 

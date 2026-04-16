@@ -41,6 +41,8 @@ function getAppUrl_() {
 
 function doGet(e) {
   try {
+    const authErr = assertAuthorized_(e);
+    if (authErr) return json_(authErr);
     const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : null;
     const postOnlyActions = {
       saveInteraction: true,
@@ -132,6 +134,8 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body = parsePostBody_(e);
+    const authErr = assertAuthorized_(e, body);
+    if (authErr) return json_(authErr);
     const action = (e && e.parameter && e.parameter.action) || body.action || '';
 
     if (action === 'saveInteraction') {
@@ -202,6 +206,17 @@ function sanitize_(value, maxLength) {
     throw new Error('Input exceeds max length of ' + maxLength + ' characters.');
   }
   return out;
+}
+
+function assertAuthorized_(e, body) {
+  const token =
+    String((e && e.parameter && e.parameter.token) || '').trim() ||
+    String((body && body.token) || '').trim();
+  const expected = String(getSetting_('API_TOKEN') || '').trim();
+  if (!expected || token !== expected) {
+    return respond_(false, null, 'Unauthorized');
+  }
+  return null;
 }
 
 function respond_(ok, data, err) {
@@ -275,17 +290,23 @@ function headerMap_(headers) {
 
 // ─── SETTINGS ────────────────────────────────────────────────
 
+let _settingsCache = null;
+
 function getSetting_(key) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_SETTINGS);
-  if (!sheet) return null;
-  const data = sheet.getDataRange().getValues();
-  for (const row of data) {
-    if (String(row[0]).trim().toUpperCase() === key.toUpperCase()) {
-      return String(row[1]).trim();
+  if (!_settingsCache) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_SETTINGS);
+    _settingsCache = {};
+    if (!sheet) return '';
+    const data = sheet.getDataRange().getValues();
+    for (let i = 0; i < data.length; i++) {
+      const k = String(data[i][0] == null ? '' : data[i][0]).trim().toUpperCase();
+      if (!k) continue;
+      _settingsCache[k] = String(data[i][1] == null ? '' : data[i][1]).trim();
     }
   }
-  return null;
+  const req = String(key == null ? '' : key).trim().toUpperCase();
+  return _settingsCache[req] || '';
 }
 
 
@@ -301,6 +322,7 @@ function setupSystem() {
   const followupHeaders    = ['TaskID','CreatedAt','PersonID','TaskType','DueDateTime',
                               'Status','LinkedInteractionID','CompletedAt','CompletionNote'];
   const settingsData       = [
+    ['API_TOKEN',''],
     ['NOTIFICATIONS_ENABLED','true'],
     ['REMINDER_EMAIL','your@email.com'],
     ['MORNING_REMINDER_HOUR','8'],
@@ -331,6 +353,7 @@ function setupSystem() {
     settings = ss.insertSheet(SHEET_SETTINGS);
     settings.getRange(1, 1, settingsData.length, 2).setValues(settingsData);
     settings.getRange(1, 1, settingsData.length, 1).setFontWeight('bold');
+    _settingsCache = null;
   }
 
   SpreadsheetApp.getUi().alert('✅ Call Tracker setup complete!');
@@ -492,6 +515,7 @@ function api_setActive(personId, active) {
 // ─── API: GET / SAVE APP SETTINGS ────────────────────────────
 
 const SETTINGS_META = {
+  API_TOKEN:              { label: 'API Token',             desc: 'Shared API secret token.', hidden: true },
   NOTIFICATIONS_ENABLED:  { label: 'Notifications',         desc: 'Turn daily and weekly reminder notifications on or off.' },
   REMINDER_EMAIL:         { label: 'Reminder Email',        desc: 'Email address(es) to receive daily and weekly reminders. Separate multiple with commas.' },
   MORNING_REMINDER_HOUR:  { label: 'Morning Reminder Hour', desc: 'Hour (0–23) to send the daily due-now email.' },
@@ -523,10 +547,12 @@ function api_saveSetting(key, val) {
     for (let i = 0; i < data.length; i++) {
       if (String(data[i][0]).trim().toUpperCase() === key.toUpperCase()) {
         sheet.getRange(i + 1, 2).setValue(val);
+        _settingsCache = null;
         return { success: true };
       }
     }
     sheet.appendRow([key, val]);
+    _settingsCache = null;
     return { success: true };
   });
 }
@@ -758,9 +784,11 @@ function closeOpenFollowupsForPerson_(sheet, personId, now) {
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][pidIdx]) === String(personId) && data[i][statIdx] === 'Open') {
-      sheet.getRange(i+1, statIdx+1).setValue('Done');
-      sheet.getRange(i+1, compIdx+1).setValue(now);
-      sheet.getRange(i+1, noteIdx+1).setValue('Auto-closed: successful contact');
+      const rowVals = data[i].slice();
+      rowVals[statIdx] = 'Done';
+      rowVals[compIdx] = now;
+      rowVals[noteIdx] = 'Auto-closed: successful contact';
+      sheet.getRange(i + 1, 1, 1, rowVals.length).setValues([rowVals]);
     }
   }
 }
@@ -865,7 +893,7 @@ function computeDuePeople_() {
 function formatDate_(d) {
   if (!d) return null;
   try {
-    return new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    return Utilities.formatDate(new Date(d), Session.getScriptTimeZone(), 'MMM d, yyyy');
   } catch(e) { return String(d); }
 }
 
@@ -1826,6 +1854,7 @@ function ensureSettingKey_(sheet, key, defaultVal) {
   if (!lock.tryLock(5000)) return;
   try {
     sheet.appendRow([key, defaultVal == null ? '' : defaultVal]);
+    _settingsCache = null;
   } finally {
     try { lock.releaseLock(); } catch (e) {}
   }
