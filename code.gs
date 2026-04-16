@@ -180,10 +180,76 @@ function doGet(e) {
   }
 }
 
+function doPost(e) {
+  try {
+    const body = parsePostBody_(e);
+    const action = (e && e.parameter && e.parameter.action) || body.action || '';
+
+    if (action === 'saveInteraction') {
+      return json_(api_saveInteraction(body.payload || body));
+    }
+    if (action === 'addPerson') {
+      return json_(api_addPerson(body.payload || body));
+    }
+    if (action === 'saveSetting') {
+      return json_(api_saveSetting(body.key || '', body.val !== undefined ? body.val : ''));
+    }
+    if (action === 'saveCadence') {
+      return json_(api_saveCadence(body.personId || '', parseInt(body.cadenceDays, 10) || 0));
+    }
+    if (action === 'setActive') {
+      return json_(api_setActive(body.personId || '', String(body.active)));
+    }
+    if (action === 'savePersonNotes') {
+      const payload = body.payload || body;
+      return json_(api_savePersonNotes(payload.personId, payload.notes));
+    }
+    if (action === 'saveTodos') {
+      return json_(api_saveTodos(body.payload || body));
+    }
+    if (action === 'updateTodo') {
+      return json_(api_updateTodo(body.todoId || '', String(body.done)));
+    }
+    if (action === 'updateTodoText') {
+      return json_(api_updateTodoText(body.todoId || '', body.text || ''));
+    }
+    if (action === 'updateTodoDueDate') {
+      return json_(api_updateTodoDueDate(body.todoId || '', body.dueDate !== undefined ? body.dueDate : ''));
+    }
+    if (action === 'updateTodoAssignee') {
+      return json_(api_updateTodoAssignee(body.todoId || '', body.personId || '', body.personName || ''));
+    }
+    if (action === 'deleteTodo') {
+      return json_(api_deleteTodo(body.todoId || ''));
+    }
+
+    return json_({ success: false, error: 'Unknown POST action.' });
+  } catch (err) {
+    return json_({ success: false, error: err.message });
+  }
+}
+
 function json_(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function parsePostBody_(e) {
+  try {
+    if (!e || !e.postData || !e.postData.contents) return {};
+    return JSON.parse(e.postData.contents);
+  } catch (err) {
+    throw new Error('Invalid JSON body.');
+  }
+}
+
+function sanitize_(value, maxLength) {
+  const out = String(value == null ? '' : value).trim();
+  if (maxLength && out.length > maxLength) {
+    throw new Error('Input exceeds max length of ' + maxLength + ' characters.');
+  }
+  return out;
 }
 
 
@@ -332,6 +398,11 @@ function api_getOptions() {
 
 function api_getInteractions(personId) {
   if (!personId) return [];
+  const cacheKey = 'interactions_' + String(personId);
+  try {
+    const cached = CacheService.getScriptCache().get(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {}
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_INTERACTIONS);
   if (!sheet) return [];
 
@@ -339,7 +410,7 @@ function api_getInteractions(personId) {
   const h    = data[0].map(v => v.toString().trim().toLowerCase().replace(/\s/g,''));
   const idx  = k => h.indexOf(k);
 
-  return data.slice(1)
+  const rows = data.slice(1)
     .filter(row => String(row[idx('personid')]) === String(personId))
     .map(row => ({
       id:         row[idx('interactionid')],
@@ -351,12 +422,14 @@ function api_getInteractions(personId) {
       nextDt:     row[idx('nextactiondatetime')]  ? formatDate_(row[idx('nextactiondatetime')])  : ''
     }))
     .reverse();
+  try {
+    CacheService.getScriptCache().put(cacheKey, JSON.stringify(rows), CACHE_TTL_SHORT);
+  } catch (e) {}
+  return rows;
 }
 
 
 // ─── API: GET PEOPLE WITH CADENCE ────────────────────────────
-
-const CADENCE_COL = 3; // Column D (0-based index)
 
 function api_getPeopleWithCadence() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEOPLE);
@@ -479,7 +552,7 @@ function api_saveSetting(key, val) {
 
 function api_addPerson(payload) {
   try {
-    const name = String(payload.name || '').trim();
+    const name = sanitize_(payload.name || '', 120);
     if (!name) return { success: false, error: 'Full name is required.' };
 
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -545,6 +618,9 @@ function isDuplicateInteraction_(payload) {
 
 function api_saveInteraction(payload) {
   try {
+    payload = payload || {};
+    payload.fullName = sanitize_(payload.fullName || '', 120);
+    payload.summary = sanitize_(payload.summary || '', 2000);
     return saveInteractionCore_(payload);
   } catch(e) {
     return { success: false, error: e.message };
@@ -577,6 +653,7 @@ function saveInteractionCore_(payload) {
     payload.nextAction || 'None', nextActionDT, true
   ]);
   incrementTodayInteractionCount_(now);
+  try { CacheService.getScriptCache().remove('interactions_' + String(payload.personId)); } catch (e) {}
 
   const pData = getSheetValues_(people);
   const pH    = pData[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
@@ -1416,6 +1493,7 @@ function api_getPersonNotes(personId) {
 
 function api_savePersonNotes(personId, notes) {
   if (!personId) return { success: false, error: 'Missing personId.' };
+  const cleanNotes = sanitize_(notes || '', 5000);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEOPLE);
   if (!sheet) return { success: false, error: 'PEOPLE sheet not found.' };
 
@@ -1433,7 +1511,7 @@ function api_savePersonNotes(personId, notes) {
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][idx('personid')]) === String(personId)) {
-      sheet.getRange(i + 1, notesCol + 1).setValue(notes || '');
+      sheet.getRange(i + 1, notesCol + 1).setValue(cleanNotes);
       return { success: true };
     }
   }

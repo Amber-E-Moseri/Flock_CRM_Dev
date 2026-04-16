@@ -1,5 +1,8 @@
 ﻿
-  var API = 'https://script.google.com/macros/s/AKfycbxIyopzk2Lg2joe_7AWLJhofkEKy4k8sDQBOJ9OtxYhQW7sh98nCuLWLMblpmh7ogC6/exec';
+  var API = (function() {
+    var m = document.querySelector('meta[name="flock-api-url"]');
+    return (m && m.getAttribute('content') ? m.getAttribute('content').trim() : '');
+  })();
   //  Hash-based routing 
   var HASH_MAP = {
     'home':        'pg-home',
@@ -80,14 +83,18 @@
   });
 
   function apiFetch(action, params) {
+    if (!API) return Promise.reject(new Error('API URL is not configured.'));
     var url = API + '?action=' + action;
     if (params) {
       Object.keys(params).forEach(function(k){
         url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
       });
     }
-    return fetch(url, { method: 'GET', redirect: 'follow' })
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
+    return fetch(url, { method: 'GET', redirect: 'follow', signal: controller.signal })
       .then(function(r) {
+        clearTimeout(timeoutId);
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.text();
       })
@@ -97,12 +104,53 @@
         } catch (e) {
           throw new Error('Response was not JSON: ' + text.slice(0, 200));
         }
+      })
+      .catch(function(e) {
+        clearTimeout(timeoutId);
+        if (e && e.name === 'AbortError') throw new Error('Request timed out — please try again');
+        throw e;
       });
   }
 
-  function loadHome() {
+  function apiPost(action, payload) {
+    if (!API) return Promise.reject(new Error('API URL is not configured.'));
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
+    return fetch(API + '?action=' + encodeURIComponent(action), {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+      signal: controller.signal
+    })
+      .then(function(r) {
+        clearTimeout(timeoutId);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function(text) {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error('Response was not JSON: ' + text.slice(0, 200));
+        }
+      })
+      .catch(function(e) {
+        clearTimeout(timeoutId);
+        if (e && e.name === 'AbortError') throw new Error('Request timed out — please try again');
+        throw e;
+      });
+  }
+
+  function getGreeting_() {
     var h = new Date().getHours();
-    var gr = 'Good morning';
+    return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  }
+
+  var _homeQuickStatsCache = null;
+
+  function loadHome() {
+    var gr = getGreeting_();
     // Use cached name if available, else fetch from settings
     if (window._userName) {
       document.getElementById('home-greeting').textContent = gr + ', ' + window._userName + '.';
@@ -115,11 +163,20 @@
         document.getElementById('home-greeting').textContent = gr + '.';
       });
     }
+    var now = Date.now();
+    if (_homeQuickStatsCache && (now - _homeQuickStatsCache.ts) < 45000) {
+      var c = _homeQuickStatsCache.data || {};
+      document.getElementById('h-cb').textContent = c.callbacks || 0;
+      document.getElementById('h-ov').textContent = c.overdue || 0;
+      document.getElementById('h-td').textContent = c.today || 0;
+      return;
+    }
     apiFetch('quickStats').then(function(d){
+      _homeQuickStatsCache = { ts: Date.now(), data: d || {} };
       document.getElementById('h-cb').textContent = d.callbacks || 0;
       document.getElementById('h-ov').textContent = d.overdue || 0;
       document.getElementById('h-td').textContent = d.today || 0;
-    }).catch(function(){});
+    }).catch(function(e){ console.warn('[Flock]', e); });
   }
 
   var SECS = [
@@ -142,14 +199,14 @@
       h += '<div class="empty-row">None - all clear here </div>';
     } else arr.forEach(function(p){
       var pid = esc(p.id);
-      h += '<div class="person-row ' + sec.row + '" data-pid="' + pid + '" data-sec="' + sec.id + '" onclick="openBsheet(\'' + pid + '\',\'' + esc(p.name) + '\',\'who_to_call\')">';
+      h += '<div class="person-row ' + sec.row + ' js-dash-open" data-pid="' + pid + '" data-name="' + esc(p.name || '') + '" data-sec="' + sec.id + '">';
       h += '<div class="av ' + sec.av + '">' + esc(ini(p.name)) + '</div>';
       h += '<div class="row-info"><div class="row-name">' + esc(p.name || 'Unnamed') + '</div>';
       h += '<div class="row-meta"><span class="row-when">' + esc(sec.when(p)) + '</span>';
       if (p.priority) h += '<span class="row-pill">' + esc(p.priority) + '</span>';
       if (p.lastAttempt) h += '<span class="row-pill">Last: ' + esc(p.lastAttempt) + '</span>';
       h += '</div></div>';
-      h += '<button class="log-btn" data-pid="' + pid + '" onclick="event.stopPropagation();openBsheet(\'' + pid + '\',\'' + esc(p.name) + '\',\'who_to_call\')" >Log</button>';
+      h += '<button class="log-btn js-dash-log" data-pid="' + pid + '" data-name="' + esc(p.name || '') + '" >Log</button>';
       h += '</div>';
       // No notes dropdown on the Who to Call page - notes are in Past Notes
     });
@@ -251,7 +308,7 @@
         _dashTodaySnapshot = today || {};
         applyDashTodayCount(_dashTodaySnapshot);
       })
-      .catch(function(){});
+      .catch(function(e){ console.warn('[Flock]', e); });
   }
 
   function jumpTo(id){ var el = document.getElementById(id); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); }
@@ -473,6 +530,30 @@
     if (!wrap.contains(e.target) && !pill.contains(e.target) && !drop.contains(e.target)) closeDrop();
   });
 
+  document.addEventListener('click', function(e){
+    var dashRow = e.target.closest('.js-dash-open');
+    var dashLog = e.target.closest('.js-dash-log');
+    if (dashLog) {
+      e.preventDefault();
+      e.stopPropagation();
+      openBsheet(dashLog.getAttribute('data-pid') || '', dashLog.getAttribute('data-name') || '', 'who_to_call');
+      return;
+    }
+    if (dashRow) {
+      openBsheet(dashRow.getAttribute('data-pid') || '', dashRow.getAttribute('data-name') || '', 'who_to_call');
+      return;
+    }
+    var histPerson = e.target.closest('.js-hist-person');
+    if (histPerson) {
+      pickHistPersonFromList(histPerson);
+      return;
+    }
+    var histLog = e.target.closest('.js-hist-log');
+    if (histLog) {
+      goLogPerson(histLog.getAttribute('data-pid') || '', histLog.getAttribute('data-name') || '');
+    }
+  });
+
   function pickResult(btn) {
     document.querySelectorAll('.chip').forEach(function(c){ c.className = 'chip'; });
     selResult = btn.dataset.r;
@@ -517,7 +598,7 @@
     var sig = JSON.stringify(payload);
     if (sig === lastSig && (Date.now() - lastAt) < 15000) { showMsg('This call was just saved - tap "Log another call" to continue.', 'info'); return; }
     setSaving(true); showMsg('Saving...', 'info');
-    apiFetch('saveInteraction', { payload: JSON.stringify(payload) })
+    apiPost('saveInteraction', { payload: payload })
       .then(function(res){
         setSaving(false);
         if (res && res.success) {
@@ -527,7 +608,7 @@
           var todoItems = (window.getTodoItems ? window.getTodoItems() : []);
           if (todoItems.length) {
             var interactionId = (res && (res.interactionId || res.interactionID || res.id)) || ('manual-' + Date.now());
-            apiFetch('saveTodos', { payload: JSON.stringify({
+            apiPost('saveTodos', { payload: {
               interactionId: interactionId,
               personId: pid,
               personName: name,
@@ -537,7 +618,7 @@
                 }
                 return { text: String(t || ''), dueDate: '' };
               }).filter(function(t){ return String(t.text || '').trim(); })
-            }) }).catch(function(){});
+            } }).catch(function(e){ console.warn('[Flock]', e); });
           }
           document.getElementById('log-form').style.display = 'none';
           document.getElementById('success-sub').textContent = 'Call with ' + name + ' has been saved.' + (todoItems.length ? ' ' + todoItems.length + ' action item' + (todoItems.length > 1 ? 's' : '') + ' added.' : '');
@@ -621,7 +702,7 @@
       var isActive = histActivePid === String(p.id);
       var rowCls = 'hist-person-row' + (isActive ? ' active' : '');
       var arrowChar = isActive ? 'v' : '>';
-      return '<div class="' + rowCls + '" data-pid="' + pid + '" data-name="' + esc(p.name) + '" onclick="pickHistPersonFromList(this)">' +
+      return '<div class="' + rowCls + ' js-hist-person" data-pid="' + pid + '" data-name="' + esc(p.name) + '">' +
         '<div class="hist-pav">' + esc(ini(p.name)) + '</div>' +
         '<span class="hist-pname">' + esc(p.name) + '</span>' +
         '<span class="hist-parrow" id="harrow-' + pid + '">' + arrowChar + '</span>' +
@@ -660,7 +741,7 @@
     panel.innerHTML = '<div class="hist-inline-empty">Loading...</div>';
     apiFetch('getInteractions', { personId: pid }).then(function(list) {
       var h = '<div class="hist-inline-topbar">' +
-        '<button class="hist-inline-log-btn" onclick="goLogPerson(\'' + esc(pid) + '\',\'' + esc(name) + '\')" title="Log call for ' + esc(name) + '" aria-label="Log call for ' + esc(name) + '">' +
+        '<button class="hist-inline-log-btn js-hist-log" data-pid="' + esc(pid) + '" data-name="' + esc(name) + '" title="Log call for ' + esc(name) + '" aria-label="Log call for ' + esc(name) + '">' +
           '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.7 15.7 0 0 0 6.6 6.6l2.2-2.2c.3-.3.8-.4 1.2-.3 1 .3 2 .5 3 .5.7 0 1.2.5 1.2 1.2V20c0 .7-.5 1.2-1.2 1.2C10.9 21.2 2.8 13.1 2.8 3.2 2.8 2.5 3.3 2 4 2h3.4c.7 0 1.2.5 1.2 1.2 0 1 .2 2 .5 3 .1.4 0 .9-.3 1.2l-2.2 2.4z"></path></svg>' +
         '</button>' +
         '</div>';
@@ -795,7 +876,7 @@ function renderHistory(list, personName) {
       var name = (entry && entry.val) ? entry.val : "";
       inp.value = name;
       window._userName = name || "";
-    }).catch(function(){});
+    }).catch(function(e){ console.warn('[Flock]', e); });
   }
 
   function saveYourName() {
@@ -806,12 +887,12 @@ function renderHistory(list, personName) {
     var val = inp.value.trim();
     if (!val) { if (stat) { stat.textContent = "Please enter a name."; stat.style.color = "var(--danger)"; } return; }
     btn.disabled = true; btn.textContent = "...";
-    apiFetch("saveSetting", { key: "YOUR_NAME", val: val }).then(function(res) {
+    apiPost("saveSetting", { key: "YOUR_NAME", val: val }).then(function(res) {
       btn.disabled = false; btn.textContent = "Save";
       if (res && res.success) {
         window._userName = val;
         var greetEl = document.getElementById("home-greeting");
-        if (greetEl) { var h = new Date().getHours(); var gr = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; greetEl.textContent = gr + ", " + val + "."; }
+        if (greetEl) { greetEl.textContent = getGreeting_() + ", " + val + "."; }
         if (stat) { stat.textContent = "Saved!"; stat.style.color = "var(--success)"; setTimeout(function(){ stat.textContent = ""; }, 2500); }
       } else {
         if (stat) { stat.textContent = "Error saving."; stat.style.color = "var(--danger)"; }
@@ -829,7 +910,7 @@ function renderHistory(list, personName) {
     if (!inp) return;
     var val = inp.value;
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
-    apiFetch('saveSetting', { key: key, val: val }).then(function(res) {
+    apiPost('saveSetting', { key: key, val: val }).then(function(res) {
       if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
       if (res && res.success) {
         if (key === 'YOUR_NAME') {
@@ -837,8 +918,7 @@ function renderHistory(list, personName) {
           // Also update the greeting on the home screen right now if it exists
           var greetEl = document.getElementById('home-greeting');
           if (greetEl) {
-            var h = new Date().getHours();
-            var gr = 'Good morning';
+            var gr = getGreeting_();
             greetEl.textContent = window._userName ? gr + ', ' + window._userName + '.' : gr + '.';
           }
         }
@@ -931,7 +1011,7 @@ function renderHistory(list, personName) {
     inp.style.borderColor = '';
     btn.disabled = true;
     btn.textContent = '...';
-    apiFetch('saveCadence', { personId: pid, cadenceDays: days })
+    apiPost('saveCadence', { personId: pid, cadenceDays: days })
       .then(function(res) {
         btn.disabled = false;
         btn.textContent = 'Save';
@@ -958,7 +1038,7 @@ function renderHistory(list, personName) {
     if (!chk) return;
     var newActive = chk.checked;
     chk.disabled = true;
-    apiFetch('setActive', { personId: pid, active: newActive ? 'true' : 'false' })
+    apiPost('setActive', { personId: pid, active: newActive ? 'true' : 'false' })
       .then(function(res) {
         chk.disabled = false;
         if (res && res.success) {
@@ -1025,8 +1105,8 @@ function renderHistory(list, personName) {
     btn.textContent = 'Saving\u2026';
     showAddPersonMsg('Saving\u2026', 'info');
 
-    var payload = JSON.stringify({ name: name, role: role, fellowship: fellowship, priority: priority, cadenceDays: cadence });
-    apiFetch('addPerson', { payload: payload })
+    var payload = { name: name, role: role, fellowship: fellowship, priority: priority, cadenceDays: cadence };
+    apiPost('addPerson', { payload: payload })
       .then(function(res) {
         addPersonSaving = false;
         btn.disabled = false;
@@ -1082,7 +1162,7 @@ function renderHistory(list, personName) {
         if (wasActive) incomingGuide.classList.add('active');
         currentGuide.replaceWith(incomingGuide);
       })
-      .catch(function() {});
+      .catch(function(e) { console.warn('[Flock]', e); });
   }
 
   window.onload = function() {
@@ -1115,7 +1195,7 @@ function renderHistory(list, personName) {
           // Re-render to append the role section without losing the existing view
           renderAnalytics(analyticsData);
         }
-      }).catch(function(){});
+      }).catch(function(e){ console.warn('[Flock]', e); });
     }).catch(function(e) {
       el.innerHTML = '<div class="err-box">Could not load analytics.<br><small>' + esc(String(e)) + '</small></div>';
     });
@@ -1554,19 +1634,19 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       queueOfflineCall(payload);
       savePromise = Promise.resolve({ success: true, offline: true });
     } else {
-      savePromise = apiFetch('saveInteraction', { payload: JSON.stringify(payload) });
+      savePromise = apiPost('saveInteraction', { payload: payload });
     }
     savePromise.then(function(res) {
       bsSaving = false;
       if (res && res.success) {
         var quickTodos = aiAssist.todos || [];
         if (quickTodos.length && res.interactionId) {
-          apiFetch('saveTodos', { payload: JSON.stringify({
+          apiPost('saveTodos', { payload: {
             interactionId: res.interactionId,
             personId: bsPid,
             personName: bsName,
             todos: quickTodos.map(function(t){ return { text: t }; })
-          }) }).then(function(){ if (window.loadTodos && document.getElementById('pg-todos') && document.getElementById('pg-todos').classList.contains('active')) loadTodos(); }).catch(function(){});
+          } }).then(function(){ if (window.loadTodos && document.getElementById('pg-todos') && document.getElementById('pg-todos').classList.contains('active')) loadTodos(); }).catch(function(e){ console.warn('[Flock]', e); });
         }
         var todoNote = quickTodos.length ? ' ' + quickTodos.length + ' action item' + (quickTodos.length > 1 ? 's' : '') + ' added.' : '';
         bsShowMsg((res.offline ? 'Saved offline - will sync when back online.' : 'Call logged!') + todoNote, 'success');
@@ -1777,11 +1857,11 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       var queuedTodos = Array.isArray(queued._queuedTodos) ? queued._queuedTodos : [];
       delete payload._queuedAt;
       delete payload._queuedTodos;
-      apiFetch('saveInteraction', { payload: JSON.stringify(payload) })
+      apiPost('saveInteraction', { payload: payload })
         .then(function(res) {
           if (!queuedTodos.length) { idx++; next(); return; }
           var interactionId = (res && (res.interactionId || res.interactionID || res.id)) || ('offline-' + Date.now());
-          apiFetch('saveTodos', { payload: JSON.stringify({
+          apiPost('saveTodos', { payload: {
             interactionId: interactionId,
             personId: payload.personId,
             personName: payload.fullName || '',
@@ -1791,9 +1871,9 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
               }
               return { text: String(t || ''), dueDate: '' };
             }).filter(function(t){ return String(t.text || '').trim(); })
-          }) }).then(function(){ idx++; next(); }).catch(function(){ idx++; next(); });
+          } }).then(function(){ idx++; next(); }).catch(function(e){ console.warn('[Flock]', e); idx++; next(); });
         })
-        .catch(function() { _syncing = false; }); // stop on error, retry next time
+        .catch(function(e) { console.warn('[Flock]', e); _syncing = false; }); // stop on error, retry next time
     }
     next();
   }
@@ -1867,7 +1947,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     btn.disabled = true;
     btn.textContent = 'Saving...';
     msg.className = 'modal-msg';
-    apiFetch('savePersonNotes', { payload: JSON.stringify({ personId: _notesPid, notes: notes }) })
+    apiPost('savePersonNotes', { payload: { personId: _notesPid, notes: notes } })
       .then(function(res) {
         btn.disabled = false; btn.textContent = 'Save Notes';
         if (res && res.success) {
@@ -2199,19 +2279,19 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
 
     var savePromise = !navigator.onLine
       ? (queueOfflineCall(payload), Promise.resolve({ success:true, offline:true }))
-      : apiFetch('saveInteraction', { payload: JSON.stringify(payload) });
+      : apiPost('saveInteraction', { payload: payload });
 
     savePromise.then(function(res) {
       if (res && res.success) {
         // Extract action items from summary text and save as todos
         var aiTodos = extractTodosFromText(p.summary || '');
         if (aiTodos.length && res.interactionId) {
-          apiFetch('saveTodos', { payload: JSON.stringify({
+          apiPost('saveTodos', { payload: {
             interactionId: res.interactionId,
             personId: p.personId,
             personName: p.personName,
             todos: aiTodos.map(function(t){ return { text: t }; })
-          }) }).then(function(){ loadTodos && loadTodos(); }).catch(function(){});
+          } }).then(function(){ loadTodos && loadTodos(); }).catch(function(e){ console.warn('[Flock]', e); });
         }
         var todoNote = aiTodos.length ? ' ' + aiTodos.length + ' action item' + (aiTodos.length > 1 ? 's' : '') + ' added.' : '';
         document.getElementById('ai-success-sub').textContent =

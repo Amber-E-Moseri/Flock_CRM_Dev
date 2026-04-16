@@ -293,7 +293,7 @@
         personName: personName,
         todos: [{ text: text, dueDate: dueDateIso || '' }]
       };
-      return apiFetch('saveTodos', { payload: JSON.stringify(payload) }).then(function(res){
+      return apiPost('saveTodos', { payload: payload }).then(function(res){
         if (!res || res.success !== true) throw new Error((res && res.error) ? res.error : 'Save failed');
         var localAfter = getManualTodos().filter(function(t){
           return todoKey_(t.personId, t.text, !!t.done, t.dueDateIso || t.dueDate) !== todoKey_(payload.personId, text, false, dueDateIso);
@@ -521,7 +521,7 @@
       if (_todoFilter === 'open' && done) setTimeout(function(){ renderTodos(_allTodos); }, 250);
       return;
     }
-    apiFetch('updateTodo', { todoId: todoId, done: done ? 'true' : 'false' }).then(function(){
+    apiPost('updateTodo', { todoId: todoId, done: done ? 'true' : 'false' }).then(function(){
       updateHomeTodoSub(_allTodos);
       if (_todoFilter === 'open' && done) {
         setTimeout(function(){ renderTodos(_allTodos); }, 600);
@@ -554,7 +554,7 @@
       return;
     }
 
-    apiFetch('deleteTodo', { todoId: todoId }).then(function(res){
+    apiPost('deleteTodo', { todoId: todoId }).then(function(res){
       if (!res || res.success !== true) throw new Error((res && res.error) ? res.error : 'Delete failed');
       // Also clear any matching local-only shadow entry so it does not reappear as "Saved locally".
       var local = getManualTodos();
@@ -663,9 +663,9 @@
     }
 
     var reqs = [];
-    if (next !== current) reqs.push(apiFetch('updateTodoText', { todoId: todoId, text: next }));
-    if (nextDue !== currentDue) reqs.push(apiFetch('updateTodoDueDate', { todoId: todoId, dueDate: nextDue || '' }));
-    if (nextPid !== currentPid) reqs.push(apiFetch('updateTodoAssignee', { todoId: todoId, personId: nextPid, personName: nextPname }));
+    if (next !== current) reqs.push(apiPost('updateTodoText', { todoId: todoId, text: next }));
+    if (nextDue !== currentDue) reqs.push(apiPost('updateTodoDueDate', { todoId: todoId, dueDate: nextDue || '' }));
+    if (nextPid !== currentPid) reqs.push(apiPost('updateTodoAssignee', { todoId: todoId, personId: nextPid, personName: nextPname }));
     Promise.all(reqs).then(function(results){
       if (results.some(function(res){ return !res || res.success !== true; })) throw new Error('Update failed');
       _editingTodoId = null;

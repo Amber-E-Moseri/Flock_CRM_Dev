@@ -95,6 +95,17 @@
       return permission;
     });
   }
+  function requestNotificationPermission(){
+    return requestPhoneNotifications().then(function(permission){
+      updateDailySummaryUi();
+      return permission;
+    }).catch(function(e){
+      if (window.showUxToast) window.showUxToast('Could not request notifications right now.');
+      console.warn('[Flock]', e);
+      updateDailySummaryUi();
+      return 'error';
+    });
+  }
   function updateDailySummaryUi(){
     var stat = $('phone-notif-status');
     if (stat) stat.textContent = getDailySummaryStatusText();
@@ -114,7 +125,7 @@
         if (window.showUxToast) window.showUxToast('Daily alerts enabled (in-app).');
         return;
       }
-      requestPhoneNotifications().then(function(permission){
+      requestNotificationPermission().then(function(permission){
         if (permission === 'granted') {
           try { localStorage.setItem('ct-daily-summary-enabled', '1'); } catch(e){}
           setDailySummaryMode('system');
@@ -135,6 +146,7 @@
     }
   }
   window.requestPhoneNotifications = requestPhoneNotifications;
+  window.requestNotificationPermission = requestNotificationPermission;
   window.toggleDailySummary = toggleDailySummary;
 
   function listReminders(){ return getLS(REMINDERS_KEY, []); }
@@ -242,7 +254,7 @@
     var val = inp.value.trim();
     if (!val) { if (stat) { stat.textContent = 'âœ•'; stat.className='aset-status err'; } return; }
     if (btn) { btn.disabled = true; btn.textContent = 'â€¦'; }
-    apiFetch('saveSetting', { key:'YOUR_NAME', val:val }).then(function(res){
+    apiPost('saveSetting', { key:'YOUR_NAME', val:val }).then(function(res){
       if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
       if (res && res.success) {
         window._userName = val;
@@ -579,17 +591,17 @@
       nextActionDateTime: p.nextActionDateTime || null
     };
     var btn = $('ai-confirm-btn'); if (btn) { btn.disabled=true; btn.textContent='Savingâ€¦'; }
-    var savePromise = !navigator.onLine ? (queueOfflineCall(payload), Promise.resolve({ success:true, offline:true })) : apiFetch('saveInteraction', { payload: JSON.stringify(payload) });
+    var savePromise = !navigator.onLine ? (queueOfflineCall(payload), Promise.resolve({ success:true, offline:true })) : apiPost('saveInteraction', { payload: payload });
     savePromise.then(function(res){
       if (res && res.success) {
         var aiTodos = aiAssist.todos || [];
         if (aiTodos.length && res.interactionId) {
-          apiFetch('saveTodos', { payload: JSON.stringify({
+          apiPost('saveTodos', { payload: {
             interactionId: res.interactionId,
             personId: payload.personId,
             personName: payload.fullName,
             todos: aiTodos.map(function(t){ return { text: t }; })
-          }) }).then(function(){ if (window.loadTodos && $('pg-todos') && $('pg-todos').classList.contains('active')) loadTodos(); }).catch(function(){});
+          } }).then(function(){ if (window.loadTodos && $('pg-todos') && $('pg-todos').classList.contains('active')) loadTodos(); }).catch(function(e){ console.warn('[Flock]', e); });
         }
         scheduleLocalReminder(payload);
         clearAiDraft();
