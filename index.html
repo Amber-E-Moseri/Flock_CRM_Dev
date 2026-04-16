@@ -4,7 +4,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
-<meta name="flock-api-url" content="https://script.google.com/macros/s/AKfycbxIyopzk2Lg2joe_7AWLJhofkEKy4k8sDQBOJ9OtxYhQW7sh98nCuLWLMblpmh7ogC6/exec"/>
+<!-- Inject at deploy time (do not commit live Apps Script URL) -->
+<meta name="flock-api-url" content=""/>
 <title>Flock</title>
 <link href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMjQ0YzQzIi8+PHBhdGggZD0iTTUwIDgyIEM1MCA4MiAxMiA1NSAxMiAzMiBDMTIgMjAgMjEgMTMgMzIgMTYgQzM5IDE4IDQ1IDI0IDUwIDMwIEM1NSAyNCA2MSAxOCA2OCAxNiBDNzkgMTMgODggMjAgODggMzIgQzg4IDU1IDUwIDgyIDUwIDgyWiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYjg5MTQ2IiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNNTAgMTUgTDUzIDI3IEw2MCAyMiBMNTYgMzIgTDY4IDMwIEw2MCAzOCBMNjUgMzggTDUwIDU1IEwzNSAzOCBMNDAgMzggTDMyIDMwIEw0NCAzMiBMNDAgMjIgTDQ3IDI3IFoiIGZpbGw9IndoaXRlIi8+PHJlY3QgeD0iNDciIHk9IjU0IiB3aWR0aD0iNiIgaGVpZ2h0PSIxMCIgcng9IjIiIGZpbGw9IndoaXRlIi8+PC9zdmc+" id="pwa-icon" rel="apple-touch-icon"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
@@ -69,7 +70,7 @@
 <div class="page active" id="pg-home">
 <div class="topbar">
 <span class="topbar-title">Flock</span>
-<button aria-label="AI Log Assistant" class="tb-btn icon-btn" onclick="openAiAssist()" title="AI Log Assistant">
+<button aria-label="Smart Auto-fill" class="tb-btn icon-btn" onclick="openAiAssist()" title="Smart Auto-fill">
 <svg fill="none" height="18" viewbox="0 0 18 18" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 2.5C1.5 1.67 2.17 1 3 1h12c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5L1.5 16V2.5z" fill="white"></path><path d="M9 4l.65 2H12l-1.7 1.25.65 2L9 8l-1.95 1.25.65-2L6 6h2.35L9 4z" fill="#244c43"></path></svg>
 </button>
 <button aria-label="Add Person" class="tb-btn icon-btn tb-addperson" onclick="openAddPerson()" title="Add Person">
@@ -173,7 +174,7 @@
 <a href="#" onclick="document.getElementById('gs-home').scrollIntoView({behavior:'smooth',block:'start'});return false;">2. Home Screen</a>
 <a href="#" onclick="document.getElementById('gs-dash').scrollIntoView({behavior:'smooth',block:'start'});return false;">3. Who to Call</a>
 <a href="#" onclick="document.getElementById('gs-log').scrollIntoView({behavior:'smooth',block:'start'});return false;">4. Logging a Call</a>
-<a href="#" onclick="document.getElementById('gs-ai').scrollIntoView({behavior:'smooth',block:'start'});return false;">5. AI Log Assistant</a>
+<a href="#" onclick="document.getElementById('gs-ai').scrollIntoView({behavior:'smooth',block:'start'});return false;">5. Smart Auto-fill</a>
 <a href="#" onclick="document.getElementById('gs-history').scrollIntoView({behavior:'smooth',block:'start'});return false;">6. Past Notes</a>
 <a href="#" onclick="document.getElementById('gs-search').scrollIntoView({behavior:'smooth',block:'start'});return false;">7. Search</a>
 <a href="#" onclick="document.getElementById('gs-analytics').scrollIntoView({behavior:'smooth',block:'start'});return false;">8. Analytics</a>
@@ -245,20 +246,20 @@
 <div class="guide-step"><div class="guide-step-num">5</div><div class="guide-step-text"><strong>Save Call</strong> tap the green button at the bottom. A confirmation screen will offer to log another call or return to the dashboard.</div></div>
 <div class="guide-note"><span class="guide-note-icon"></span>A date &amp; time is required when you choose <strong>Callback</strong> or <strong>Follow-up</strong> as the next action.</div>
 </div>
-<!-- 5. AI Log Assistant -->
+<!-- 5. Smart Auto-fill -->
 <div class="guide-section" id="gs-ai">
 <div class="guide-section-header">
 <div class="guide-section-icon"></div>
-<div class="guide-section-title">5. AI Log Assistant</div>
+<div class="guide-section-title">5. Smart Auto-fill</div>
 </div>
 <div class="guide-body">
-<p>The AI Log Assistant lets you describe a call in plain language and automatically fills in the log form for you. Access it via the <strong>star icon</strong> in the Log a Call top bar, or from Settings.</p>
+<p>Smart Auto-fill lets you describe a call in plain language and automatically fills in the log form for you. Access it via the <strong>star icon</strong> in the Log a Call top bar, or from Settings.</p>
 </div>
 <div class="guide-step"><div class="guide-step-num">1</div><div class="guide-step-text">Tap the <strong> icon</strong> in the top bar of Log a Call.</div></div>
 <div class="guide-step"><div class="guide-step-num">2</div><div class="guide-step-text">Type or speak a natural description of the call e.g. <em>"Called Sarah, no answer, will try again Friday afternoon."</em></div></div>
-<div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-text">The AI parses your description and pre-fills the person, result, next action, date, and notes.</div></div>
+<div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-text">Smart parsing reads your description and pre-fills the person, result, next action, date, and notes.</div></div>
 <div class="guide-step"><div class="guide-step-num">4</div><div class="guide-step-text">Review the filled-in details and tap <strong>Confirm &amp; Save</strong>.</div></div>
-<div class="guide-tip"><span class="guide-tip-icon"></span>Be specific about the person's name and any follow-up date the AI will pick them up automatically.</div>
+<div class="guide-tip"><span class="guide-tip-icon"></span>Be specific about the person's name and any follow-up date so smart parsing can pick them up automatically.</div>
 </div>
 <!-- 6. Past Notes -->
 <div class="guide-section" id="gs-history">
@@ -372,7 +373,7 @@
 <div class="topbar">
 <button class="tb-btn" onclick="showPage('pg-home')">← Home</button>
 <span class="topbar-title">Log a Call</span>
-<button aria-label="AI Log Assistant" class="tb-btn icon-btn" onclick="openAiAssist()" title="AI Log Assistant"><svg fill="none" height="18" viewbox="0 0 18 18" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 2.5C1.5 1.67 2.17 1 3 1h12c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5L1.5 16V2.5z" fill="white"></path><path d="M9 4l.65 2H12l-1.7 1.25.65 2L9 8l-1.95 1.25.65-2L6 6h2.35L9 4z" fill="#244c43"></path></svg></button>
+<button aria-label="Smart Auto-fill" class="tb-btn icon-btn" onclick="openAiAssist()" title="Smart Auto-fill"><svg fill="none" height="18" viewbox="0 0 18 18" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 2.5C1.5 1.67 2.17 1 3 1h12c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5L1.5 16V2.5z" fill="white"></path><path d="M9 4l.65 2H12l-1.7 1.25.65 2L9 8l-1.95 1.25.65-2L6 6h2.35L9 4z" fill="#244c43"></path></svg></button>
 </div>
 <div class="shell">
 <div class="success-screen" id="success-screen">
@@ -566,8 +567,8 @@
 </svg>
 </div>
 <div class="nav-text">
-<div class="nav-title">AI Log Assistant</div>
-<div class="nav-sub">Describe a call and AI fills it in for you</div>
+<div class="nav-title">Smart Auto-fill</div>
+<div class="nav-sub">Describe a call and smart parsing fills it in</div>
 </div>
 <span class="nav-arrow">&rsaquo;</span>
 </div>
@@ -736,16 +737,16 @@
 </div>
 </div>
 </div>
-<!-- â”€â”€ AI LOG ASSISTANT SHEET â”€â”€ -->
+<!-- â”€â”€ SMART AUTO-FILL SHEET â”€â”€ -->
 <div class="bsheet-backdrop" id="ai-backdrop" onclick="closeAiAssist()"></div>
 <div class="bsheet" id="ai-bsheet">
 <div class="bsheet-handle-wrap"><div class="bsheet-handle"></div></div>
 <div class="bsheet-head">
-<button class="bsheet-close" onclick="closeAiAssist()" aria-label="Close AI assistant">&times;</button>
+<button class="bsheet-close" onclick="closeAiAssist()" aria-label="Close smart auto-fill">&times;</button>
 <div class="ai-head-row">
 <div class="ai-head-icon"><svg fill="none" height="18" viewbox="0 0 18 18" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 2.5C1.5 1.67 2.17 1 3 1h12c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H5L1.5 16V2.5z" fill="white"></path><path d="M9 4l.65 2H12l-1.7 1.25.65 2L9 8l-1.95 1.25.65-2L6 6h2.35L9 4z" fill="#244c43"></path></svg></div>
 <div>
-<div class="bsheet-title">AI Log Assistant</div>
+<div class="bsheet-title">Smart Auto-fill</div>
 <div class="bsheet-sub">Describe the call and I’ll structure it for you</div>
 </div>
 </div>
@@ -764,10 +765,10 @@
 <button class="vtb-mic" id="ai-mic-btn" onclick="toggleVoice('ai-input','ai-mic-btn')" title="Voice to text" type="button"><svg fill="none" height="15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="15"><rect height="12" rx="3" width="6" x="9" y="2"></rect><path d="M5 10a7 7 0 0 0 14 0"></path><line x1="12" x2="12" y1="19" y2="22"></line><line x1="8" x2="16" y1="22" y2="22"></line></svg></button>
 </div>
 </div>
-<div class="ai-extract-cues">AI will extract: <strong>Person</strong> · <strong>Outcome</strong> · <strong>Next step</strong></div>
+<div class="ai-extract-cues">Auto-fill will extract: <strong>Person</strong> · <strong>Outcome</strong> · <strong>Next step</strong></div>
 <div class="msg" id="ai-input-msg"></div>
 <div class="ai-actions">
-<button class="bsheet-save ai-parse-btn" id="ai-parse-btn" onclick="runAiParse()">↻ Parse</button>
+<button class="bsheet-save ai-parse-btn" id="ai-parse-btn" onclick="runAiParse()">Quick Parse</button>
 <div class="ai-cancel-row">
 <button class="ai-cancel-btn" onclick="closeAiAssist()">Cancel</button>
 </div>
@@ -775,7 +776,7 @@
 </div>
 <!-- Step 2: Confirm parsed result -->
 <div id="ai-step-confirm" style="display:none;">
-<div style="font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">AI understood this as:</div>
+<div style="font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">Smart parse understood this as:</div>
 <div style="background:var(--surface-soft);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;">
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
 <div id="ai-conf-av" style="width:36px;height:36px;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">?</div>

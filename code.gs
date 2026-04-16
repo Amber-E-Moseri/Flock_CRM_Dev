@@ -42,141 +42,90 @@ function getAppUrl_() {
 function doGet(e) {
   try {
     const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : null;
+    const postOnlyActions = {
+      saveInteraction: true,
+      addPerson: true,
+      saveSetting: true,
+      saveCadence: true,
+      setActive: true,
+      savePersonNotes: true,
+      saveTodos: true,
+      updateTodo: true,
+      updateTodoText: true,
+      updateTodoDueDate: true,
+      updateTodoAssignee: true,
+      deleteTodo: true,
+      editPerson: true,
+    };
+
+    if (postOnlyActions[action]) return json_(respond_(false, null, 'This action requires POST.'));
 
     if (action === 'quickStats') {
       const d = api_getDuePeople();
-      return json_({
+      return json_(respond_(true, {
         callbacks: (d.callbacks||[]).length,
         overdue:   (d.overdue  ||[]).length,
         today:     (d.today    ||[]).length
-      });
+      }));
     }
 
     if (action === 'duePeople') {
-      return json_(api_getDuePeople());
+      return json_(normalizeResponse_(api_getDuePeople()));
     }
 
     if (action === 'people') {
-      return json_(api_getPeople());
-    }
-
-    if (action === 'saveInteraction') {
-      const body = JSON.parse(e.parameter.payload || '{}');
-      return json_(api_saveInteraction(body));
+      return json_(normalizeResponse_(api_getPeople()));
     }
 
     if (action === 'getInteractions') {
       const personId = e.parameter.personId || '';
-      return json_(api_getInteractions(personId));
+      return json_(normalizeResponse_(api_getInteractions(personId)));
     }
 
     if (action === 'getPeopleWithCadence') {
-      return json_(api_getPeopleWithCadence());
-    }
-
-    if (action === 'saveCadence') {
-      const personId    = e.parameter.personId    || '';
-      const cadenceDays = parseInt(e.parameter.cadenceDays) || 0;
-      return json_(api_saveCadence(personId, cadenceDays));
-    }
-
-    if (action === 'setActive') {
-      const personId = e.parameter.personId || '';
-      const active   = e.parameter.active   || 'false';
-      return json_(api_setActive(personId, active));
+      return json_(normalizeResponse_(api_getPeopleWithCadence()));
     }
 
     if (action === 'getSettings') {
-      return json_(api_getSettings());
-    }
-
-    if (action === 'saveSetting') {
-      const key = e.parameter.key || '';
-      const val = e.parameter.val !== undefined ? e.parameter.val : '';
-      return json_(api_saveSetting(key, val));
-    }
-
-    if (action === 'addPerson') {
-      const body = JSON.parse(e.parameter.payload || '{}');
-      return json_(api_addPerson(body));
+      return json_(normalizeResponse_(api_getSettings()));
     }
 
     if (action === 'getRoleFrequency') {
-      return json_(api_getRoleFrequency());
+      return json_(normalizeResponse_(api_getRoleFrequency()));
     }
 
     if (action === 'getAnalytics') {
-      return json_(api_getAnalytics());
+      return json_(normalizeResponse_(api_getAnalytics()));
     }
 
     if (action === 'debugAnalytics') {
-      return json_(api_debugAnalytics());
+      return json_(normalizeResponse_(api_debugAnalytics()));
     }
 
     if (action === 'searchInteractions') {
       const query = e.parameter.query || '';
-      return json_(api_searchInteractions(query));
+      return json_(normalizeResponse_(api_searchInteractions(query)));
     }
 
     if (action === 'getPersonNotes') {
       const personId = e.parameter.personId || '';
-      return json_(api_getPersonNotes(personId));
-    }
-
-    if (action === 'savePersonNotes') {
-      const body = JSON.parse(e.parameter.payload || '{}');
-      return json_(api_savePersonNotes(body.personId, body.notes));
+      return json_(normalizeResponse_(api_getPersonNotes(personId)));
     }
 
     // ── NEW: today's call count from LastAttempt ──
     if (action === 'getTodayCount') {
-      return json_(api_getTodayCount());
+      return json_(normalizeResponse_(api_getTodayCount()));
     }
 
     if (action === 'getTodos') {
       const personId = e.parameter.personId || '';
-      return json_(api_getTodos(personId));
+      return json_(normalizeResponse_(api_getTodos(personId)));
     }
 
-    if (action === 'saveTodos') {
-      const body = JSON.parse(e.parameter.payload || '{}');
-      return json_(api_saveTodos(body));
-    }
-
-    if (action === 'updateTodo') {
-      const todoId = e.parameter.todoId || '';
-      const done   = e.parameter.done   || 'false';
-      return json_(api_updateTodo(todoId, done));
-    }
-
-    if (action === 'updateTodoText') {
-      const todoId = e.parameter.todoId || '';
-      const text   = e.parameter.text   || '';
-      return json_(api_updateTodoText(todoId, text));
-    }
-
-    if (action === 'updateTodoDueDate') {
-      const todoId  = e.parameter.todoId || '';
-      const dueDate = e.parameter.dueDate !== undefined ? e.parameter.dueDate : '';
-      return json_(api_updateTodoDueDate(todoId, dueDate));
-    }
-
-    if (action === 'updateTodoAssignee') {
-      const todoId = e.parameter.todoId || '';
-      const personId = e.parameter.personId || '';
-      const personName = e.parameter.personName || '';
-      return json_(api_updateTodoAssignee(todoId, personId, personName));
-    }
-
-    if (action === 'deleteTodo') {
-      const todoId = e.parameter.todoId || '';
-      return json_(api_deleteTodo(todoId));
-    }
-
-    return json_({ ok: true });
+    return json_(respond_(true, {}));
 
   } catch (err) {
-    return json_({ error: err.message });
+    return json_(respond_(false, null, err.message));
   }
 }
 
@@ -186,46 +135,49 @@ function doPost(e) {
     const action = (e && e.parameter && e.parameter.action) || body.action || '';
 
     if (action === 'saveInteraction') {
-      return json_(api_saveInteraction(body.payload || body));
+      return json_(normalizeResponse_(api_saveInteraction(body.payload || body)));
     }
     if (action === 'addPerson') {
-      return json_(api_addPerson(body.payload || body));
+      return json_(normalizeResponse_(api_addPerson(body.payload || body)));
     }
     if (action === 'saveSetting') {
-      return json_(api_saveSetting(body.key || '', body.val !== undefined ? body.val : ''));
+      return json_(normalizeResponse_(api_saveSetting(body.key || '', body.val !== undefined ? body.val : '')));
     }
     if (action === 'saveCadence') {
-      return json_(api_saveCadence(body.personId || '', parseInt(body.cadenceDays, 10) || 0));
+      return json_(normalizeResponse_(api_saveCadence(body.personId || '', parseInt(body.cadenceDays, 10) || 0)));
     }
     if (action === 'setActive') {
-      return json_(api_setActive(body.personId || '', String(body.active)));
+      return json_(normalizeResponse_(api_setActive(body.personId || '', String(body.active))));
     }
     if (action === 'savePersonNotes') {
       const payload = body.payload || body;
-      return json_(api_savePersonNotes(payload.personId, payload.notes));
+      return json_(normalizeResponse_(api_savePersonNotes(payload.personId, payload.notes)));
     }
     if (action === 'saveTodos') {
-      return json_(api_saveTodos(body.payload || body));
+      return json_(normalizeResponse_(api_saveTodos(body.payload || body)));
     }
     if (action === 'updateTodo') {
-      return json_(api_updateTodo(body.todoId || '', String(body.done)));
+      return json_(normalizeResponse_(api_updateTodo(body.todoId || '', String(body.done))));
     }
     if (action === 'updateTodoText') {
-      return json_(api_updateTodoText(body.todoId || '', body.text || ''));
+      return json_(normalizeResponse_(api_updateTodoText(body.todoId || '', body.text || '')));
     }
     if (action === 'updateTodoDueDate') {
-      return json_(api_updateTodoDueDate(body.todoId || '', body.dueDate !== undefined ? body.dueDate : ''));
+      return json_(normalizeResponse_(api_updateTodoDueDate(body.todoId || '', body.dueDate !== undefined ? body.dueDate : '')));
     }
     if (action === 'updateTodoAssignee') {
-      return json_(api_updateTodoAssignee(body.todoId || '', body.personId || '', body.personName || ''));
+      return json_(normalizeResponse_(api_updateTodoAssignee(body.todoId || '', body.personId || '', body.personName || '')));
     }
     if (action === 'deleteTodo') {
-      return json_(api_deleteTodo(body.todoId || ''));
+      return json_(normalizeResponse_(api_deleteTodo(body.todoId || '')));
+    }
+    if (action === 'editPerson') {
+      return json_(normalizeResponse_(api_editPerson(body.payload || body)));
     }
 
-    return json_({ success: false, error: 'Unknown POST action.' });
+    return json_(respond_(false, null, 'Unknown POST action.'));
   } catch (err) {
-    return json_({ success: false, error: err.message });
+    return json_(respond_(false, null, err.message));
   }
 }
 
@@ -250,6 +202,20 @@ function sanitize_(value, maxLength) {
     throw new Error('Input exceeds max length of ' + maxLength + ' characters.');
   }
   return out;
+}
+
+function respond_(ok, data, err) {
+  return ok
+    ? Object.assign({ success: true }, data || {})
+    : { success: false, error: String(err || 'Unknown error') };
+}
+
+function normalizeResponse_(result) {
+  if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'success')) return result;
+  if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'error')) return respond_(false, null, result.error);
+  if (Array.isArray(result)) return respond_(true, { data: result });
+  if (result && typeof result === 'object') return respond_(true, result);
+  return respond_(true, { data: result });
 }
 
 
@@ -597,6 +563,40 @@ function api_addPerson(payload) {
 
 
 // ─── DUPLICATE INTERACTION CHECK ─────────────────────────────
+
+function api_editPerson(payload) {
+  try {
+    payload = payload || {};
+    const personId = String(payload.personId || '').trim();
+    const name = sanitize_(payload.name || '', 120);
+    if (!personId) return { success: false, error: 'Missing personId.' };
+    if (!name) return { success: false, error: 'Name is required.' };
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEOPLE);
+    if (!sheet) return { success: false, error: 'PEOPLE sheet not found.' };
+
+    const data = sheet.getDataRange().getValues();
+    if (!data.length) return { success: false, error: 'PEOPLE sheet is empty.' };
+    const headers = data[0].map(h => h.toString().trim().toLowerCase().replace(/\s/g,''));
+    const idx = h => headers.indexOf(h);
+    const pidCol = idx('personid');
+    if (pidCol < 0) return { success: false, error: 'PEOPLE headers are invalid.' };
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][pidCol]).trim() === personId) {
+        if (idx('fullname') >= 0) sheet.getRange(i + 1, idx('fullname') + 1).setValue(name);
+        if (idx('role') >= 0) sheet.getRange(i + 1, idx('role') + 1).setValue(String(payload.role || '').trim());
+        if (idx('fellowship') >= 0) sheet.getRange(i + 1, idx('fellowship') + 1).setValue(String(payload.fellowship || '').trim());
+        if (idx('priority') >= 0) sheet.getRange(i + 1, idx('priority') + 1).setValue(String(payload.priority || '').trim());
+        cacheBust_();
+        return { success: true };
+      }
+    }
+    return { success: false, error: 'Person not found.' };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
 
 function isDuplicateInteraction_(payload) {
   const cache  = CacheService.getScriptCache();

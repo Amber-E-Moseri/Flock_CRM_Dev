@@ -308,9 +308,13 @@ Copy `/exec` URL
 
 ### 4. Connect frontend
 
-```javascript
-const API = "YOUR_APPS_SCRIPT_EXEC_URL";
+Set the API URL via HTML meta tag at deploy time (do **not** commit live `/exec` URLs):
+
+```html
+<meta name="flock-api-url" content="YOUR_APPS_SCRIPT_EXEC_URL" />
 ```
+
+The frontend reads this value automatically in `js/app-core.js`.
 
 ---
 

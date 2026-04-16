@@ -259,10 +259,10 @@
       if (res && res.success) {
         window._userName = val;
         var greetEl = $('home-greeting');
-        if (greetEl) { var h = new Date().getHours(); var gr = 'Good morning'; greetEl.textContent = val ? gr + ', ' + val + '.' : gr + '.'; }
+        if (greetEl) { var gr = window.getGreeting_ ? window.getGreeting_() : 'Good morning'; greetEl.textContent = val ? gr + ', ' + val + '.' : gr + '.'; }
         if (stat) { stat.textContent = 'âœ“'; stat.className='aset-status ok'; }
       } else if (stat) { stat.textContent='âœ•'; stat.className='aset-status err'; }
-    }).catch(function(){ if (btn) { btn.disabled=false; btn.textContent='Save'; } if (stat) { stat.textContent='âœ•'; stat.className='aset-status err'; } });
+    }).catch(function(e){ console.warn('[Flock]', e); if (btn) { btn.disabled=false; btn.textContent='Save'; } if (stat) { stat.textContent='âœ•'; stat.className='aset-status err'; } });
   };
 
   function saveAiDraft(){
@@ -461,7 +461,9 @@
     var q = normalize(($('ai-override-search') && $('ai-override-search').value) || '');
     var drop = $('ai-override-drop');
     if (!drop) return;
-    var people = window._aiPeopleCache || window.allPeople || [];
+    var people = (window._peopleCache && Array.isArray(window._peopleCache.data) && window._peopleCache.data.length)
+      ? window._peopleCache.data
+      : (window.allPeople || []);
     var list = people.filter(function(p){
       return !q || normalize(p.name).indexOf(q) >= 0 || normalize(p.id).indexOf(q) >= 0;
     }).slice(0,8);
@@ -473,7 +475,9 @@
   };
 
   window.aiChoosePerson = function(pid){
-    var people = window._aiPeopleCache || window.allPeople || [];
+    var people = (window._peopleCache && Array.isArray(window._peopleCache.data) && window._peopleCache.data.length)
+      ? window._peopleCache.data
+      : (window.allPeople || []);
     var p = people.find(function(x){ return String(x.id) === String(pid); });
     if (!p || !window._aiParsed) return;
     window._aiParsed.personId = p.id;
@@ -512,11 +516,13 @@
     var desc = ($('ai-input') && $('ai-input').value.trim()) || '';
     if (!desc) { var msg = $('ai-input-msg'); if (msg) { msg.textContent='Please describe the call first.'; msg.className='msg error'; } return; }
     if (window.stopVoice) stopVoice();
-    var btn = $('ai-parse-btn'); if (btn) { btn.disabled = true; btn.textContent='â³ Parsingâ€¦'; }
+    var btn = $('ai-parse-btn'); if (btn) { btn.disabled = true; btn.textContent='Processing...'; }
     if ($('ai-input-msg')) $('ai-input-msg').className='msg';
-    var peoplePromise = (window.allPeople && window.allPeople.length) ? Promise.resolve(window.allPeople) : apiFetch('people').then(function(list){ window._aiPeopleCache = list || []; return list || []; });
+    var peoplePromise = (window.allPeople && window.allPeople.length)
+      ? Promise.resolve(window.allPeople)
+      : (window.getPeople ? window.getPeople() : apiFetch('people'));
     peoplePromise.then(function(people){
-      window._aiPeopleCache = people || [];
+      if (Array.isArray(people) && people.length) window.allPeople = people;
       var result = detectResult(desc);
       var nextAction = detectAction(desc);
       var parsedDate = detectDate(desc);
@@ -542,8 +548,8 @@
       renderAiDate();
       aiShowStep('confirm');
       saveAiDraft();
-      if (btn) { btn.disabled=false; btn.textContent='âœ¨ Parse with AI'; }
-    }).catch(function(e){ if (btn) { btn.disabled=false; btn.textContent='âœ¨ Parse with AI'; } var msg = $('ai-input-msg'); if (msg) { msg.textContent='Could not parse right now. ' + String(e); msg.className='msg error'; } });
+      if (btn) { btn.disabled=false; btn.textContent='Quick Parse'; }
+    }).catch(function(e){ if (btn) { btn.disabled=false; btn.textContent='Quick Parse'; } var msg = $('ai-input-msg'); if (msg) { msg.textContent='Could not parse right now. ' + String(e); msg.className='msg error'; } });
   };
 
   var _origAiPickResult = window.aiPickResult;
@@ -719,7 +725,7 @@
         else if (window.showUxToast) window.showUxToast(msg);
         localStorage.setItem('ct-due-summary-notified', todayKey);
       }
-    }).catch(function(){});
+    }).catch(function(e){ console.warn('[Flock]', e); });
   }
 
   document.addEventListener('DOMContentLoaded', function(){

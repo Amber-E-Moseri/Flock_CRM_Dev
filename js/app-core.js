@@ -115,7 +115,7 @@
       })
       .then(function(text) {
         try {
-          return JSON.parse(text);
+          return normalizeApiResponse_(JSON.parse(text));
         } catch (e) {
           throw new Error('Response was not JSON: ' + text.slice(0, 200));
         }
@@ -129,12 +129,15 @@
 
   function apiPost(action, payload) {
     if (!API) return Promise.reject(new Error('API URL is not configured.'));
+    payload = payload || {};
     var controller = new AbortController();
     var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
     return fetch(API + '?action=' + encodeURIComponent(action), {
       method: 'POST',
       redirect: 'follow',
-      headers: { 'Content-Type': 'application/json' },
+      // Use a "simple request" content type to avoid CORS preflight failures
+      // against Apps Script web apps (which often don't answer OPTIONS).
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload || {}),
       signal: controller.signal
     })
@@ -145,7 +148,7 @@
       })
       .then(function(text) {
         try {
-          return JSON.parse(text);
+          return normalizeApiResponse_(JSON.parse(text));
         } catch (e) {
           throw new Error('Response was not JSON: ' + text.slice(0, 200));
         }
@@ -155,6 +158,19 @@
         if (e && e.name === 'AbortError') throw new Error('Request timed out — please try again');
         throw e;
       });
+  }
+
+  function normalizeApiResponse_(res) {
+    if (!res || typeof res !== 'object') return res;
+    if (Object.prototype.hasOwnProperty.call(res, 'success')) {
+      if (!res.success) throw new Error(res.error || 'Request failed');
+      if (Object.prototype.hasOwnProperty.call(res, 'data')) return res.data;
+      return res;
+    }
+    if (Object.prototype.hasOwnProperty.call(res, 'error')) {
+      throw new Error(res.error || 'Request failed');
+    }
+    return res;
   }
 
   function hapticTick_() {
@@ -173,8 +189,34 @@
     var h = new Date().getHours();
     return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   }
+  window.getGreeting_ = getGreeting_;
 
   var _homeQuickStatsCache = null;
+  var _peopleCache = { data: null, promise: null };
+
+  function invalidatePeopleCache() {
+    _peopleCache = { data: null, promise: null };
+    window._peopleCache = _peopleCache;
+  }
+
+  function getPeople(forceRefresh) {
+    if (!forceRefresh && Array.isArray(_peopleCache.data)) return Promise.resolve(_peopleCache.data);
+    if (!forceRefresh && _peopleCache.promise) return _peopleCache.promise;
+    _peopleCache.promise = apiFetch('people').then(function(list) {
+      _peopleCache.data = Array.isArray(list) ? list : [];
+      _peopleCache.promise = null;
+      window._peopleCache = _peopleCache;
+      return _peopleCache.data;
+    }).catch(function(e) {
+      _peopleCache.promise = null;
+      window._peopleCache = _peopleCache;
+      throw e;
+    });
+    return _peopleCache.promise;
+  }
+  window.getPeople = getPeople;
+  window.invalidatePeopleCache = invalidatePeopleCache;
+  window._peopleCache = _peopleCache;
 
   function loadHome() {
     var gr = getGreeting_();
@@ -389,7 +431,7 @@
     if (peopleLoading && peoplePromise) return peoplePromise;
     peopleLoading = true;
     showDropLoading();
-    peoplePromise = apiFetch('people').then(function(list){
+    peoplePromise = getPeople().then(function(list){
       allPeople = Array.isArray(list) ? list : [];
       peopleLoaded = true;
       peopleLoading = false;
@@ -640,6 +682,7 @@
         setSaving(false);
         if (res && res.success) {
           hapticTick_();
+          _homeQuickStatsCache = null;
           lastSig = sig; lastAt = Date.now();
           // Capture pending action item text, then save action items if any
           if (window.flushPendingLogTodoItem) window.flushPendingLogTodoItem();
@@ -1081,6 +1124,14 @@ function renderHistory(list, personName) {
     var stat = document.getElementById('cstat-' + pid);
     if (!chk) return;
     var newActive = chk.checked;
+    if (!newActive) {
+      var ok = window.confirm('Set this person to inactive? They will be hidden from call queues until reactivated.');
+      if (!ok) {
+        chk.checked = true;
+        if (lbl) { lbl.textContent = 'Active'; lbl.className = 'sw-label on'; }
+        return;
+      }
+    }
     chk.disabled = true;
     apiPost('setActive', { personId: pid, active: newActive ? 'true' : 'false' })
       .then(function(res) {
@@ -1158,6 +1209,7 @@ function renderHistory(list, personName) {
         btn.textContent = 'Add to Call List';
         if (res && res.success) {
           // Bust the people cache so Log a Call picks up the new person
+          invalidatePeopleCache();
           peopleLoaded = false;
           document.getElementById('addperson-form').style.display = 'none';
           document.getElementById('addperson-bar').style.display = 'none';
@@ -1507,12 +1559,13 @@ function renderHistory(list, personName) {
     btn.textContent = 'Saving...';
     msg.className = 'modal-msg';
 
-    var payload = JSON.stringify({ personId: editModalPid, name: name, role: role, fellowship: fellowship, priority: priority });
-    apiFetch('editPerson', { payload: payload })
+    var payload = { personId: editModalPid, name: name, role: role, fellowship: fellowship, priority: priority };
+    apiPost('editPerson', { payload: payload })
       .then(function(res) {
         btn.disabled = false;
         btn.textContent = 'Save Changes';
         if (res && res.success) {
+          invalidatePeopleCache();
           // Update local cache
           var p = cadPeople.find(function(x){ return String(x.id) === String(editModalPid); });
           if (p) { p.name = name; p.role = role; p.fellowship = fellowship; p.priority = priority; }
@@ -1695,6 +1748,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       bsSaving = false;
       if (res && res.success) {
         hapticTick_();
+        _homeQuickStatsCache = null;
         var quickTodos = aiAssist.todos || [];
         if (quickTodos.length && res.interactionId) {
           apiPost('saveTodos', { payload: {
@@ -1728,6 +1782,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
   var _voiceErrorShownAt = 0;
   var _voiceKeepAlive = false;
   var _voiceManualStop = false;
+  var _voiceRestartCount = 0;
 
   function voiceHint(msg) {
     var now = Date.now();
@@ -1736,7 +1791,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     if (window.showUxToast) window.showUxToast(msg);
   }
 
-  function toggleVoice(textareaId, micBtnId) {
+  function toggleVoice(textareaId, micBtnId, isRestart) {
     var ua = navigator.userAgent || '';
     var isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     var isSafariIOS = isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA/i.test(ua);
@@ -1765,6 +1820,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     _activeMicBtnId = micBtnId;
     _voiceManualStop = false;
     _voiceKeepAlive = !!isIOS;
+    if (!isRestart) _voiceRestartCount = 0;
     var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     _recognition = new SpeechRecognition();
     _recognition.continuous = !isIOS;
@@ -1779,10 +1835,12 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     var startVal = ta.value;
     if (startVal && !startVal.endsWith(' ')) startVal += ' ';
     _recognition.onstart = function() {
+      _voiceRestartCount = 0;
       var btn = document.getElementById(micBtnId);
       if (btn) btn.classList.add('listening');
     };
     _recognition.onresult = function(e) {
+      _voiceRestartCount = 0;
       var interim = '';
       for (var i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + ' ';
@@ -1806,9 +1864,15 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       var shouldRestart = _voiceKeepAlive && !_voiceManualStop && _activeTextareaId === textareaId;
       _recognition = null;
       if (shouldRestart) {
+        _voiceRestartCount += 1;
+        if (_voiceRestartCount > 3) {
+          _voiceKeepAlive = false;
+          voiceHint('Voice input stopped. Continue with keyboard input.');
+          return;
+        }
         setTimeout(function() {
           if (_voiceKeepAlive && !_voiceManualStop && _activeTextareaId === textareaId && !_recognition) {
-            toggleVoice(textareaId, micBtnId);
+            toggleVoice(textareaId, micBtnId, true);
           }
         }, 140);
       }
@@ -1844,6 +1908,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     }
     _activeTextareaId = null;
     _activeMicBtnId = null;
+    _voiceRestartCount = 0;
   }
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1851,6 +1916,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   var _offlineQueue = [];
   var _syncing = false;
+  var _offlineFailedById = {};
 
   (function initOfflineQueue() {
     try {
@@ -1871,14 +1937,21 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     banner.classList.toggle('on', isOff);
     if (isOff) {
       var qlen = _offlineQueue.length;
-      document.getElementById('offline-q-count').textContent = qlen > 0 ? '(' + qlen + ' queued)' : '';
+      var failed = Object.keys(_offlineFailedById).length;
+      var txt = '';
+      if (qlen > 0) txt += qlen + ' queued';
+      if (failed > 0) txt += (txt ? ', ' : '') + failed + ' unsynced';
+      document.getElementById('offline-q-count').textContent = txt ? '(' + txt + ')' : '';
     }
   }
 
   function updateOfflineBadge() {
+    var failed = Object.keys(_offlineFailedById).length;
+    window.__offlineUnsyncedCount = failed;
     document.querySelectorAll('.offline-queue-badge').forEach(function(el) {
       el.textContent = _offlineQueue.length;
       el.classList.toggle('on', _offlineQueue.length > 0);
+      el.title = failed > 0 ? (failed + ' item' + (failed === 1 ? '' : 's') + ' failed to sync') : '';
     });
     updateOfflineBanner();
   }
@@ -1894,17 +1967,21 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     if (_syncing || _offlineQueue.length === 0 || !navigator.onLine) return;
     _syncing = true;
     var queue = _offlineQueue.slice();
+    var syncedKeys = {};
+    var failedCount = 0;
     var idx = 0;
     function next() {
       if (idx >= queue.length) {
         _syncing = false;
-        // remove synced items
         var remaining = _offlineQueue.filter(function(item) {
-          return !queue.slice(0, idx).some(function(q) { return q._queuedAt === item._queuedAt; });
+          return !syncedKeys[item._queuedAt];
         });
         _offlineQueue = remaining;
         try { localStorage.setItem('ct-offline-queue', JSON.stringify(_offlineQueue)); } catch(e) {}
         updateOfflineBadge();
+        if (failedCount > 0 && window.showUxToast) {
+          window.showUxToast(failedCount + ' offline item' + (failedCount === 1 ? '' : 's') + ' still unsynced');
+        }
         if (idx > 0) loadDash();
         return;
       }
@@ -1915,7 +1992,13 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       delete payload._queuedTodos;
       apiPost('saveInteraction', { payload: payload })
         .then(function(res) {
-          if (!queuedTodos.length) { idx++; next(); return; }
+          if (!queuedTodos.length) {
+            syncedKeys[queued._queuedAt] = true;
+            delete _offlineFailedById[queued._queuedAt];
+            idx++;
+            next();
+            return;
+          }
           var interactionId = (res && (res.interactionId || res.interactionID || res.id)) || ('offline-' + Date.now());
           apiPost('saveTodos', { payload: {
             interactionId: interactionId,
@@ -1927,9 +2010,26 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
               }
               return { text: String(t || ''), dueDate: '' };
             }).filter(function(t){ return String(t.text || '').trim(); })
-          } }).then(function(){ idx++; next(); }).catch(function(e){ console.warn('[Flock]', e); idx++; next(); });
+          } }).then(function(){
+            syncedKeys[queued._queuedAt] = true;
+            delete _offlineFailedById[queued._queuedAt];
+            idx++;
+            next();
+          }).catch(function(e){
+            console.warn('[Flock]', e);
+            failedCount++;
+            _offlineFailedById[queued._queuedAt] = String(e);
+            idx++;
+            next();
+          });
         })
-        .catch(function(e) { console.warn('[Flock]', e); _syncing = false; }); // stop on error, retry next time
+        .catch(function(e) {
+          console.warn('[Flock]', e);
+          failedCount++;
+          _offlineFailedById[queued._queuedAt] = String(e);
+          idx++;
+          next();
+        });
     }
     next();
   }
@@ -2081,14 +2181,13 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
   // AI LOG ASSISTANT
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   var _aiParsed = null;       // holds last parsed result
-  var _aiPeopleCache = null;  // local copy of people for override search
 
   function openAiAssist() {
     _aiParsed = null;
     document.getElementById('ai-input').value = '';
     document.getElementById('ai-input-msg').className = 'msg';
     document.getElementById('ai-parse-btn').disabled = false;
-    document.getElementById('ai-parse-btn').textContent = '↻ Parse';
+    document.getElementById('ai-parse-btn').textContent = 'Quick Parse';
     aiShowStep('input');
     document.getElementById('ai-backdrop').classList.add('open');
     document.getElementById('ai-bsheet').classList.add('open');
@@ -2158,19 +2257,18 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     }
     stopVoice();
     var btn = document.getElementById('ai-parse-btn');
-    btn.disabled = true; btn.textContent = '⏳ Parsing...';
+    btn.disabled = true; btn.textContent = '⏳ Processing...';
     document.getElementById('ai-input-msg').className = 'msg';
 
     // â”€â”€ Client-side parsing with chrono-node (no API key needed) â”€â”€
     // Reuse the already-loaded allPeople list if available - avoids a second fetch
     var peoplePromise = (allPeople && allPeople.length)
       ? Promise.resolve(allPeople)
-      : (_aiPeopleCache && _aiPeopleCache.length)
-        ? Promise.resolve(_aiPeopleCache)
-        : apiFetch('people').then(function(list) { _aiPeopleCache = list; return list; });
+      : getPeople();
 
     peoplePromise.then(function(people) {
-      _aiPeopleCache = people;
+      allPeople = Array.isArray(people) ? people : allPeople;
+      peopleLoaded = true;
       var lower = desc.toLowerCase();
 
       // â”€â”€ Result detection â”€â”€
@@ -2230,10 +2328,10 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
       if (bestScore === 0) { personId = ''; personName = ''; }
 
       _aiParsed = { personId: personId, personName: personName, result: result, nextAction: nextAction, nextActionDateTime: nextActionDateTime, summary: summary };
-      btn.disabled = false; btn.textContent = '↻ Parse';
+      btn.disabled = false; btn.textContent = 'Quick Parse';
       showAiConfirm(_aiParsed, people);
     }).catch(function(e) {
-      btn.disabled = false; btn.textContent = '↻ Parse';
+      btn.disabled = false; btn.textContent = 'Quick Parse';
       var msg = document.getElementById('ai-input-msg');
       msg.textContent = 'Error: ' + String(e); msg.className = 'msg error';
     });
@@ -2302,7 +2400,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
 
   function aiOverrideSearch() {
     var q = document.getElementById('ai-override-search').value.trim().toLowerCase();
-    var people = _aiPeopleCache || [];
+    var people = (Array.isArray(_peopleCache.data) && _peopleCache.data.length) ? _peopleCache.data : allPeople;
     var filtered = q ? people.filter(function(p) { return p.name.toLowerCase().indexOf(q) >= 0; }).slice(0,6) : people.slice(0,6);
     var drop = document.getElementById('ai-override-drop');
     if (!filtered.length) { drop.style.display = 'none'; return; }
@@ -2379,6 +2477,7 @@ var bsPid = null, bsName = null, bsResult = '', bsAction = 'None', bsSaving = fa
     savePromise.then(function(res) {
       if (res && res.success) {
         hapticTick_();
+        _homeQuickStatsCache = null;
         // Extract action items from summary text and save as todos
         var aiTodos = extractTodosFromText(p.summary || '');
         if (aiTodos.length && res.interactionId) {

@@ -1,0 +1,7 @@
+# Local API URL / deploy-time overrides (never commit live backend endpoints)
+api-url.local.txt
+.env.local
+.env.*.local
+
+# Optional local HTML copy used for manual URL injection during testing
+index.local.html
