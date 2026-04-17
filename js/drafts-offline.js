@@ -197,7 +197,7 @@
           '<div class="sw-wrap">' +
             '<span class="sw-label ' + (isDailySummaryEnabled() ? 'on' : 'off') + '" id="daily-summary-toggle-label">' + (isDailySummaryEnabled() ? 'On' : 'Off') + '</span>' +
             '<label class="sw">' +
-              '<input type="checkbox" id="daily-summary-toggle" ' + (isDailySummaryEnabled() ? 'checked' : '') + ' onchange="toggleDailySummary(this.checked)">' +
+              '<input type="checkbox" id="daily-summary-toggle" ' + (isDailySummaryEnabled() ? 'checked' : '') + ' data-action="toggle-daily-summary">' +
               '<span class="sw-track"></span>' +
             '</label>' +
           '</div>' +
@@ -209,14 +209,14 @@
       h += '<div class="aset-row">' +
         '<div class="aset-label">&#9881; ' + esc(notifEntry.label || 'Notifications') + '</div>' +
         (notifEntry.desc ? '<div class="aset-desc">' + esc(notifEntry.desc) + '</div>' : '') +
-        '<input type="hidden" class="aset-input" id="aset-NOTIFICATIONS_ENABLED" value="' + (notifOn ? 'true' : 'false') + '">' +
+        '<input type="hidden" class="aset-input" id="aset-NOTIFICATIONS_ENABLED" data-setting-input="NOTIFICATIONS_ENABLED" value="' + (notifOn ? 'true' : 'false') + '">' +
         '<div class="aset-inline-divider"></div>' +
         '<div class="aset-switch-row">' +
           '<div class="aset-switch-label">Enable notifications</div>' +
           '<div class="sw-wrap">' +
             '<span class="sw-label ' + (notifOn ? 'on' : 'off') + '" id="notif-enabled-label">' + (notifOn ? 'On' : 'Off') + '</span>' +
             '<label class="sw">' +
-              '<input type="checkbox" id="notif-enabled-toggle" ' + (notifOn ? 'checked' : '') + ' onchange="asetPickBool(\'NOTIFICATIONS_ENABLED\', this.checked);saveAppSetting(\'NOTIFICATIONS_ENABLED\');(function(lbl){if(lbl){lbl.textContent=this.checked?\'On\':\'Off\';lbl.className=\'sw-label \'+(this.checked?\'on\':\'off\');}}).call(this, document.getElementById(\'notif-enabled-label\'));">' +
+              '<input type="checkbox" id="notif-enabled-toggle" ' + (notifOn ? 'checked' : '') + ' data-action="toggle-notifications-setting" data-setting-input="NOTIFICATIONS_ENABLED" data-key="NOTIFICATIONS_ENABLED" data-label-id="notif-enabled-label">' +
               '<span class="sw-track"></span>' +
             '</label>' +
           '</div>' +
@@ -231,7 +231,7 @@
         var k = esc(keyRaw), icon = icons[keyUpper] || '&#9881;';
         var ctrlHtml =
           '<div class="aset-row-ctrl">' +
-            '<input class="aset-input" id="aset-' + k + '" value="' + esc(s.val) + '" placeholder="-">' +
+            '<input class="aset-input" id="aset-' + k + '" data-setting-input="' + k + '" value="' + esc(s.val) + '" placeholder="-">' +
             '<button class="aset-save" id="assave-' + k + '" data-action="save-app-setting" data-key="' + k + '">Save</button>' +
             '<span class="aset-status" id="asstat-' + k + '"></span>' +
           '</div>';
@@ -694,9 +694,15 @@
     if (id === 'bs-summary' || id === 'bs-next-dt') saveBsDraft();
   });
   document.addEventListener('change', function(e){
-    var id = e.target && e.target.id;
+    var target = e.target;
+    var id = target && target.id;
     if (id === 'next-dt' || id === 'summary') saveLogDraft();
     if (id === 'bs-next-dt' || id === 'bs-summary') saveBsDraft();
+    var action = target && target.getAttribute ? target.getAttribute('data-action') : '';
+    if (action === 'toggle-daily-summary') {
+      toggleDailySummary(!!target.checked);
+      return;
+    }
   });
 
   var _origPickResult = window.pickResult;

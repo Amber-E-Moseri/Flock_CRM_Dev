@@ -23,14 +23,14 @@
           var raw = String(s.val == null ? '' : s.val).trim().toLowerCase();
           var isOn = raw === 'true' || raw === '1' || raw === 'yes' || raw === 'on';
           ctrlHtml =
-            '<input type="hidden" class="aset-input" id="aset-' + k + '" value="' + (isOn ? 'true' : 'false') + '">' +
+            '<input type="hidden" class="aset-input" id="aset-' + k + '" data-setting-input="' + k + '" value="' + (isOn ? 'true' : 'false') + '">' +
             '<div class="aset-inline-divider"></div>' +
             '<div class="aset-switch-row">' +
               '<div class="aset-switch-label">Enable notifications</div>' +
               '<div class="sw-wrap">' +
                 '<span class="sw-label ' + (isOn ? 'on' : 'off') + '" id="notif-enabled-label-main">' + (isOn ? 'On' : 'Off') + '</span>' +
                 '<label class="sw">' +
-                  '<input type="checkbox" id="notif-enabled-toggle-main" ' + (isOn ? 'checked' : '') + ' onchange="asetPickBool(\'' + k + '\', this.checked);saveAppSetting(\'' + k + '\');(function(lbl){if(lbl){lbl.textContent=this.checked?\'On\':\'Off\';lbl.className=\'sw-label \'+(this.checked?\'on\':\'off\');}}).call(this, document.getElementById(\'notif-enabled-label-main\'));">' +
+                  '<input type="checkbox" id="notif-enabled-toggle-main" ' + (isOn ? 'checked' : '') + ' data-action="toggle-notifications-setting" data-setting-input="' + k + '" data-key="' + k + '" data-label-id="notif-enabled-label-main">' +
                   '<span class="sw-track"></span>' +
                 '</label>' +
               '</div>' +
@@ -41,7 +41,7 @@
         } else {
           ctrlHtml =
             '<div class="aset-row-ctrl">' +
-              '<input class="aset-input" id="aset-' + k + '" value="' + esc(s.val) + '" placeholder="-">' +
+              '<input class="aset-input" id="aset-' + k + '" data-setting-input="' + k + '" value="' + esc(s.val) + '" placeholder="-">' +
               '<button class="aset-save" id="assave-' + k + '" data-action="save-app-setting" data-key="' + k + '">Save</button>' +
               '<span class="aset-status" id="asstat-' + k + '"></span>' +
             '</div>';
@@ -138,6 +138,43 @@
     }
   }
 
+  function handleSettingInputChange(key, value) {
+    var normalizedKey = String(key || '').trim();
+    if (!normalizedKey) return;
+    var inp = document.getElementById('aset-' + normalizedKey);
+    if (inp && inp.value !== value) inp.value = value;
+  }
+  window.handleSettingInputChange = handleSettingInputChange;
+
+  document.addEventListener('change', function(e) {
+    var el = e.target;
+    if (!el) return;
+    var keyFromInput = el.getAttribute('data-setting-input');
+    if (keyFromInput) {
+      handleSettingInputChange(
+        keyFromInput,
+        el.type === 'checkbox' ? (el.checked ? 'true' : 'false') : el.value
+      );
+    }
+    var action = el.getAttribute('data-action');
+    if (action === 'toggle-cadence-active') {
+      toggleActive(el.getAttribute('data-pid') || '');
+      return;
+    }
+    if (action === 'toggle-notifications-setting') {
+      var key = el.getAttribute('data-key') || keyFromInput || '';
+      var checked = !!el.checked;
+      asetPickBool(key, checked);
+      saveAppSetting(key);
+      var lblId = el.getAttribute('data-label-id');
+      var lbl = lblId ? document.getElementById(lblId) : null;
+      if (lbl) {
+        lbl.textContent = checked ? 'On' : 'Off';
+        lbl.className = 'sw-label ' + (checked ? 'on' : 'off');
+      }
+    }
+  });
+
   function loadCadencePeople() {
     cadPeople = [];
     var el = document.getElementById('cad-list');
@@ -180,7 +217,7 @@
           '<div class="sw-wrap">' +
             '<label class="sw-label ' + (isActive ? 'on' : 'off') + '" id="clab-' + pid + '">' + (isActive ? 'Active' : 'Inactive') + '</label>' +
             '<label class="sw">' +
-              '<input type="checkbox" id="ctog-' + pid + '" ' + (isActive ? 'checked' : '') + ' onchange="toggleActive(\'' + pid + '\')">' +
+              '<input type="checkbox" id="ctog-' + pid + '" ' + (isActive ? 'checked' : '') + ' data-action="toggle-cadence-active" data-pid="' + pid + '">' +
               '<span class="sw-track"></span>' +
             '</label>' +
           '</div>' +

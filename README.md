@@ -183,7 +183,7 @@ Copy the `/exec` URL.
 Set the API URL at deploy time — do not commit it directly:
 
 ```html
-<meta name="flock-api-url" content="YOUR_APPS_SCRIPT_EXEC_URL" />
+<meta name="flock-api-url" content="__FLOCK_API_URL__" />
 ```
 
 Or use the inject script with an environment variable:

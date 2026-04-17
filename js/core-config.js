@@ -24,14 +24,22 @@
   var _addPersonReturn = null;
 
   function showApiMissingBanner_() {
-    if (API || document.getElementById('api-missing-banner')) return;
+    if (!isApiConfigMissing_(API) || document.getElementById('api-missing-banner')) return;
     var banner = document.createElement('div');
     banner.id = 'api-missing-banner';
-    banner.textContent = 'API URL is missing. Set <meta name="flock-api-url" content="..."> in index.html.';
+    banner.textContent = 'App not configured: set FLOCK_CLIENT_API_URL';
     banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#fef3c7;color:#7c2d12;border-bottom:1px solid #fcd34d;padding:10px 14px;font-size:13px;font-weight:600;text-align:center;';
     document.body.appendChild(banner);
   }
-  if (!API) {
+  function isApiConfigMissing_(value) {
+    var v = String(value || '').trim();
+    if (!v) return true;
+    if (v === '__FLOCK_API_URL__') return true;
+    if (v === '__FLOCK_CLIENT_API_URL__') return true;
+    if (v === 'FLOCK_API_URL') return true;
+    return false;
+  }
+  if (isApiConfigMissing_(API)) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showApiMissingBanner_);
     else showApiMissingBanner_();
   }
