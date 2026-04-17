@@ -14,6 +14,18 @@
   // Session bump so the counter updates immediately after a save,
   // then a live fetch from the sheet confirms the real number.
   if (!window.__todayLoggedCount) window.__todayLoggedCount = 0;
+  function resetDailyCountIfNeeded(){
+    var key = 'ct-last-today-count-date';
+    var today = todayKey();
+    try {
+      var last = localStorage.getItem(key);
+      if (last !== today) {
+        window.__todayLoggedCount = 0;
+        localStorage.setItem(key, today);
+      }
+    } catch (e) {}
+  }
+  window.resetDailyCountIfNeeded = resetDailyCountIfNeeded;
 
   function updateDailyProgress(count){
     var n = (count !== undefined) ? count : (window.__todayLoggedCount || 0);
