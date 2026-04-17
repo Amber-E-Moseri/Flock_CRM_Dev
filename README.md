@@ -9,7 +9,7 @@ A lightweight relationship management system built on Google Apps Script and Goo
 ## Screenshots
 <img width="1918" height="911" alt="image" src="https://github.com/user-attachments/assets/12f47477-15f6-4256-bad5-a77278013f13" />
 <img width="1918" height="903" alt="image" src="https://github.com/user-attachments/assets/e6f7257b-593c-4777-a7c0-6854351a87dd" />
-<img width="600" height="906" alt="image" src="https://github.com/user-attachments/assets/906d30ee-f120-4755-8a0e-87acd73de918" />
+<img width="780" height="1284" alt="flockdemo netlify app_" src="https://github.com/user-attachments/assets/30398fc6-a000-403b-8b7a-108e796431a9" />
 
 
 ---
