@@ -7,14 +7,10 @@ A lightweight relationship management system built on Google Apps Script and Goo
 ---
 
 ## Screenshots
+<img width="1918" height="911" alt="image" src="https://github.com/user-attachments/assets/12f47477-15f6-4256-bad5-a77278013f13" />
+<img width="1918" height="903" alt="image" src="https://github.com/user-attachments/assets/e6f7257b-593c-4777-a7c0-6854351a87dd" />
+<img width="600" height="906" alt="image" src="https://github.com/user-attachments/assets/906d30ee-f120-4755-8a0e-87acd73de918" />
 
-<img width="1898" height="916" alt="Priority dashboard" src="https://github.com/user-attachments/assets/75de2bbb-bf94-4786-b6e6-76000caa8558" />
-<img width="1900" height="913" alt="Log call flow" src="https://github.com/user-attachments/assets/4a33b232-5a17-4fd7-aaf4-8dce86d5f165" />
-<img width="1901" height="912" alt="Call history" src="https://github.com/user-attachments/assets/03306a19-88a5-4b4a-bc5f-580b4d6015d2" />
-<img width="1918" height="851" alt="Analytics" src="https://github.com/user-attachments/assets/91595f00-fe77-472c-8345-9657e2a03eb3" />
-<img width="1901" height="911" alt="Settings" src="https://github.com/user-attachments/assets/a8b9e64d-abb0-4809-9ceb-a9a03c4cd6d7" />
-<img width="1901" height="907" alt="Add person" src="https://github.com/user-attachments/assets/a8833303-83d1-4afb-91cb-80134bb9f32d" />
-<img width="1897" height="915" alt="Mobile view" src="https://github.com/user-attachments/assets/9dada27d-31a5-4d80-8880-028c9b8d2369" />
 
 ---
 
